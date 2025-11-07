@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>E‑Sign PDF — Bright Green Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+ --green:#00c853;
+ --green-dark:#00b14a;
+ --bg:#ffffff;
+ --muted:#6b6b6b;
+ --radius:14px;
+ --shadow:0 6px 20px rgba(0,0,0,0.08);
+ font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,Arial;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:#111;line-height:1.5;padding:20px;display:flex;justify-content:center}
+.container{width:100%;max-width:900px;margin:auto;text-align:center}
+h1{font-size:1.8rem;margin-bottom:20px;color:var(--green-dark);font-weight:700}
+.tool-card{background:#fff;border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:30px}
+label{display:block;font-weight:600;margin-bottom:6px;text-align:left}
+input[type="file"],select,button,input[type="text"]{width:100%;padding:12px;border:2px solid #e3e3e3;border-radius:var(--radius);margin-bottom:15px;font-size:1rem}
+button{background:var(--green);color:#fff;font-weight:600;cursor:pointer;transition:.25s;border:none}
+button:hover{background:var(--green-dark)}
+#pdfCanvasContainer{border:2px dashed #dcdcdc;border-radius:var(--radius);padding:10px;max-height:70vh;overflow:auto;margin-top:15px}
+.signature-section{margin-top:20px;text-align:left}
+#signCanvas{border:2px solid #ddd;border-radius:var(--radius);width:100%;height:200px;touch-action: none;}
+.sign-controls{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.sign-controls input{flex:1}
+#typedSignature{flex:1}
+@media(max-width:600px){h1{font-size:1.4rem}}
+</style>
+</head>
+<body>
+<div class="container">
+ <h1>E‑Sign PDF Tool</h1>
+ <div class="tool-card">
+   <label>Select PDF File</label>
+   <input type="file" id="pdfInput" accept="application/pdf" />
+
+   <div id="pdfCanvasContainer"></div>
+
+   <div class="signature-section">
+     <h3 style="margin-bottom:10px;color:var(--green-dark);font-weight:600">Create Signature</h3>
+     <canvas id="signCanvas"></canvas>
+     <div class="sign-controls">
+       <button id="clearSign">Clear</button>
+       <input type="text" id="typedSignature" placeholder="Or type signature text..." />
+     </div>
+   </div>
+
+   <p style="margin-top:15px;text-align:left;font-weight:600">Tap the PDF where you want to place your signature.</p>
+
+   <button id="downloadSigned">Download Signed PDF</button>
+ </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+let pdfDoc = null, pdfPages = [], currentPage = null;
+let signatureImage = null;
+
+const pdfInput = document.getElementById("pdfInput");
+const pdfCanvasContainer = document.getElementById("pdfCanvasContainer");
+
+pdfInput.addEventListener("change", async()=>{
+  const file = pdfInput.files[0];
+  if(!file) return;
+  const bytes = await file.arrayBuffer();
+  const loading = pdfjsLib.getDocument({data:bytes});
+  const pdf = await loading.promise;
+  pdfDoc = pdf;
+  pdfCanvasContainer.innerHTML="";
+  pdfPages = [];
+
+  for(let i=1;i<=pdf.numPages;i++){
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({scale:1.2});
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    canvas.style.marginBottom = "15px";
+    await page.render({canvasContext:ctx,viewport}).promise;
+    canvas.dataset.pageNumber = i;
+    pdfCanvasContainer.appendChild(canvas);
+    pdfPages.push({page,canvas});
+  }
+});
+
+// Signature drawing
+const signCanvas = document.getElementById("signCanvas");
+const sctx = signCanvas.getContext("2d");
+let drawing = false;
+
+function resizeSignCanvas(){signCanvas.width = signCanvas.offsetWidth;signCanvas.height = signCanvas.offsetHeight;}
+resizeSignCanvas();
+window.addEventListener("resize", resizeSignCanvas);
+
+signCanvas.addEventListener("pointerdown", ()=>{drawing=true});
+signCanvas.addEventListener("pointerup", ()=>{drawing=false;sctx.beginPath()});
+signCanvas.addEventListener("pointermove", e=>{
+ if(!drawing) return;
+ const rect = signCanvas.getBoundingClientRect();
+ sctx.lineWidth = 2;
+ sctx.lineCap = "round";
+ sctx.strokeStyle = "black";
+ sctx.lineTo(e.clientX-rect.left, e.clientY-rect.top);
+ sctx.stroke();
+ sctx.beginPath();
+ sctx.moveTo(e.clientX-rect.left, e.clientY-rect.top);
+});
+
+document.getElementById("clearSign").onclick = ()=>{
+ sctx.clearRect(0,0,signCanvas.width,signCanvas.height);
+ document.getElementById("typedSignature").value="";
+ signatureImage=null;
+}
+
+// Create signature image on click
+function updateSignatureImage(){
+ const typed = document.getElementById("typedSignature").value.trim();
+ if(typed){
+   // Typed signature -> render to canvas temporarily
+   const temp = document.createElement("canvas");
+   temp.width = 400; temp.height = 120;
+   const tctx = temp.getContext("2d");
+   tctx.font = "48px Inter";
+   tctx.fillStyle = "black";
+   tctx.textBaseline = "middle";
+   tctx.fillText(typed, 10, temp.height/2);
+   signatureImage = temp.toDataURL("image/png");
+ } else {
+   signatureImage = signCanvas.toDataURL("image/png");
+ }
+}
+
+pdfCanvasContainer.addEventListener("click", e=>{
+ if(!pdfDoc) return;
+ updateSignatureImage();
+ if(!signatureImage) return alert("Please draw or type your signature first.");
+ const canvas = e.target;
+ if(canvas.tagName!="CANVAS") return;
+ canvas.getContext("2d").drawImage(Object.assign(new Image(),{src:signatureImage}), e.offsetX-50, e.offsetY-20, 120, 60);
+ canvas.dataset.signed = "true";
+ canvas.dataset.signX = e.offsetX;
+ canvas.dataset.signY = e.offsetY;
+});
+
+// Download signed PDF
+const downloadBtn = document.getElementById("downloadSigned");
+downloadBtn.onclick = async()=>{
+ if(!pdfDoc) return;
+ updateSignatureImage();
+ if(!signatureImage) return alert("Please add a signature to the document first.");
+ const pdfBytes = await (await fetch(pdfInput.files[0])).arrayBuffer();
+ const pdfLibDoc = await PDFLib.PDFDocument.load(pdfBytes);
+ const pngImg = await pdfLibDoc.embedPng(signatureImage);
+
+ pdfPages.forEach(async({canvas}, i)=>{
+   if(canvas.dataset.signed){
+     const page = pdfLibDoc.getPage(i);
+     page.drawImage(pngImg, {x: canvas.dataset.signX, y: canvas.height - canvas.dataset.signY, width:120, height:60});
+   }
+ });
+ const newPdf = await pdfLibDoc.save();
+ const blob = new Blob([newPdf], {type:"application/pdf"});
+ const link = document.createElement("a");
+ link.href = URL.createObjectURL(blob);
+ link.download = "signed.pdf";
+ link.click();
+};
+</script>
+</body>
+</html>

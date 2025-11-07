@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>E-Sign PDF Tool — Bright Green Theme</title>
+  <style>
+    :root{
+      --green: #00c853; /* bright green */
+      --green-700: #00a14a;
+      --white: #ffffff;
+      --muted: #f4f6f8;
+      --shadow: 0 6px 18px rgba(0,0,0,0.08);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--muted);color:#0b1020;}
+
+    header{background:linear-gradient(90deg,var(--white),#f7fff8);border-bottom:4px solid var(--green);padding:12px 16px;display:flex;gap:12px;align-items:center}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:44px;height:44px;border-radius:10px;background:var(--green);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    .title{font-size:18px;font-weight:600}
+
+    main{display:grid;grid-template-columns:360px 1fr;gap:18px;padding:18px}
+    @media (max-width:900px){main{grid-template-columns:1fr;}}
+
+    /* Sidebar */
+    .sidebar{background:var(--white);padding:14px;border-radius:12px;box-shadow:var(--shadow);min-height:240px}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:0;background:var(--green);color:var(--white);font-weight:600;cursor:pointer}
+    .btn.secondary{background:#eaf9ee;color:var(--green);border:1px solid rgba(0,0,0,0.04)}
+    .muted{color:#556177;font-size:13px}
+    .input-file{display:block;margin-top:12px}
+
+    /* Canvas area */
+    .viewer-wrap{background:var(--white);border-radius:12px;padding:12px;box-shadow:var(--shadow);min-height:400px}
+    .pages{display:flex;flex-direction:column;gap:16px;align-items:center;padding:12px}
+    .page-container{position:relative}
+    .page-canvas{display:block;border-radius:6px;box-shadow:0 6px 30px rgba(10,20,40,0.06)}
+    .sig-overlay{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+
+    /* signature preview element */
+    .sig-item{position:absolute;touch-action:none;border:2px dashed rgba(0,0,0,0.06);background:transparent;cursor:grab}
+    .sig-item .resize-handle{position:absolute;width:14px;height:14px;border-radius:4px;background:var(--white);border:2px solid var(--green);right:-10px;bottom:-10px;touch-action:none}
+
+    /* modal */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(6,10,20,0.35);z-index:200}
+    .modal.open{display:flex}
+    .modal-card{background:var(--white);border-radius:12px;padding:16px;max-width:720px;width:94%;box-shadow:var(--shadow)}
+
+    footer{padding:12px;text-align:center;color:#6a7380}
+
+    /* small helpers */
+    .row{display:flex;gap:8px;align-items:center}
+    label{font-size:13px}
+    .tiny{font-size:12px;color:#51607a}
+    .controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+
+    /* responsive adjustments */
+    @media (max-width:480px){.btn{padding:8px 10px;font-size:14px}.title{font-size:15px}.sidebar{padding:10px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">ES</div>
+      <div>
+        <div class="title">E‑Sign PDF</div>
+        <div class="muted">Upload • Sign • Preview • Download</div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <aside class="sidebar">
+      <div>
+        <label class="tiny">Upload PDF</label>
+        <input id="fileInput" class="input-file" type="file" accept="application/pdf" />
+      </div>
+
+      <hr style="margin:12px 0;border:none;border-top:1px solid #eef2f4">
+
+      <div>
+        <label class="tiny">Create Signature</label>
+        <div class="controls">
+          <button id="drawSigBtn" class="btn secondary">Draw</button>
+          <button id="typeSigBtn" class="btn secondary">Type</button>
+          <button id="uploadSigBtn" class="btn secondary">Upload Image</button>
+        </div>
+        <div id="currentSigBox" style="margin-top:12px">
+          <div class="muted">No signature saved</div>
+        </div>
+      </div>
+
+      <hr style="margin:12px 0;border:none;border-top:1px solid #eef2f4">
+
+      <div>
+        <label class="tiny">Place & Adjust</label>
+        <div class="controls">
+          <button id="placeSigBtn" class="btn">Place Signature</button>
+          <button id="resetBtn" class="btn secondary">Clear Signatures</button>
+        </div>
+        <div style="margin-top:10px" class="tiny">Tap "Place Signature", then tap anywhere on a page to place. Drag to move, use corner to resize.</div>
+      </div>
+
+      <hr style="margin:12px 0;border:none;border-top:1px solid #eef2f4">
+
+      <div>
+        <label class="tiny">Export</label>
+        <div class="controls">
+          <button id="downloadBtn" class="btn">Download Signed PDF</button>
+        </div>
+        <div style="margin-top:10px" class="tiny">Signed PDF will be flattened and available for download.</div>
+      </div>
+
+    </aside>
+
+    <section class="viewer-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="muted">PDF Preview</div>
+        <div class="row">
+          <label class="tiny">Zoom</label>
+          <select id="zoomSelect" class="tiny">
+            <option value="0.75">75%</option>
+            <option value="1" selected>100%</option>
+            <option value="1.5">150%</option>
+            <option value="2">200%</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="pages" class="pages">
+        <div class="muted">No PDF loaded</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Made with ❤️ • Bright green & white theme</footer>
+
+  <!-- modal for signature creation -->
+  <div id="modal" class="modal">
+    <div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong id="modalTitle">Create Signature</strong>
+        <button id="closeModal" class="btn secondary">Close</button>
+      </div>
+      <div id="modalBody">
+        <!-- dynamic content: drawing canvas or typed signature -->
+      </div>
+    </div>
+  </div>
+
+  <!-- include libraries: pdf.js and pdf-lib via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.8.162/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+
+  <script>
+  // Basic E-sign PDF tool JavaScript
+  (function(){
+    const fileInput = document.getElementById('fileInput');
+    const pagesEl = document.getElementById('pages');
+    const modal = document.getElementById('modal');
+    const modalBody = document.getElementById('modalBody');
+    const modalTitle = document.getElementById('modalTitle');
+    const closeModal = document.getElementById('closeModal');
+    const drawSigBtn = document.getElementById('drawSigBtn');
+    const typeSigBtn = document.getElementById('typeSigBtn');
+    const uploadSigBtn = document.getElementById('uploadSigBtn');
+    const currentSigBox = document.getElementById('currentSigBox');
+    const placeSigBtn = document.getElementById('placeSigBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const zoomSelect = document.getElementById('zoomSelect');
+
+    let pdfDoc = null; // pdf.js document
+    let rawPdfBytes = null; // ArrayBuffer for pdf-lib
+    let pageRenderInfos = []; // stores per-page metadata: {pageNumber, pdfWidth, pdfHeight, canvasWidth, canvasHeight, scale}
+    let signatureDataUrl = null; // current signature as PNG data URL
+    let placingMode = false;
+
+    // initialize pdf.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.8.162/pdf.worker.min.js';
+
+    fileInput.addEventListener('change', async (e)=>{
+      const f = e.target.files[0];
+      if(!f) return;
+      if(f.type !== 'application/pdf') { alert('Please upload a PDF file'); return; }
+      const arr = await f.arrayBuffer();
+      rawPdfBytes = arr;
+      loadPdf(arr, parseFloat(zoomSelect.value));
+    });
+
+    zoomSelect.addEventListener('change', ()=>{
+      if(!rawPdfBytes) return;
+      loadPdf(rawPdfBytes, parseFloat(zoomSelect.value));
+    });
+
+    async function loadPdf(arrayBuffer, scale=1){
+      pagesEl.innerHTML = '';
+      pageRenderInfos = [];
+      pdfDoc = await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+      const total = pdfDoc.numPages;
+      for(let i=1;i<=total;i++){
+        const page = await pdfDoc.getPage(i);
+        const viewport = page.getViewport({scale: scale});
+        const canvas = document.createElement('canvas');
+        canvas.className = 'page-canvas';
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        canvas.style.width = Math.floor(viewport.width) + 'px';
+        canvas.style.height = Math.floor(viewport.height) + 'px';
+
+        const container = document.createElement('div');
+        container.className = 'page-container';
+        container.style.width = canvas.style.width;
+        container.style.height = canvas.style.height;
+        container.dataset.pageNumber = i;
+
+        const ctx = canvas.getContext('2d');
+        // clear and render
+        await page.render({canvasContext: ctx, viewport: viewport}).promise;
+
+        // overlay for signatures
+        const overlay = document.createElement('div');
+        overlay.className = 'sig-overlay';
+        overlay.style.width = canvas.style.width;
+        overlay.style.height = canvas.style.height;
+
+        container.appendChild(canvas);
+        container.appendChild(overlay);
+        pagesEl.appendChild(container);
+
+        pageRenderInfos.push({
+          pageNumber: i,
+          pdfWidth: page.view[2], // PDF points width
+          pdfHeight: page.view[3],
+          canvasWidth: canvas.width,
+          canvasHeight: canvas.height,
+          scale: scale,
+          overlay: overlay
+        });
+
+        // click handler for placing signature
+        container.addEventListener('click', (ev)=>{
+          if(!placingMode) return;
+          if(!signatureDataUrl) { alert('No signature saved — create one first.'); return; }
+          // get click coords relative to container
+          const rect = container.getBoundingClientRect();
+          const x = ev.clientX - rect.left;
+          const y = ev.clientY - rect.top;
+          placeSignatureOnPage(i, x, y);
+        });
+      }
+    }
+
+    // signature creation: drawing
+    drawSigBtn.addEventListener('click', ()=>{
+      modalTitle.textContent = 'Draw Signature';
+      modalBody.innerHTML = '';
+      const canv = document.createElement('canvas'); canv.width = 800; canv.height = 200; canv.style.width='100%'; canv.style.height='120px'; canv.style.border='1px solid #e6eef2'; canv.style.borderRadius='8px';
+      const ctx = canv.getContext('2d'); ctx.lineWidth=3; ctx.lineCap='round'; ctx.strokeStyle='#000';
+      let drawing=false;
+      function start(e){drawing=true;ctx.beginPath();const p=getPos(e);ctx.moveTo(p.x,p.y);} 
+      function move(e){ if(!drawing) return; const p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); }
+      function end(e){ drawing=false; }
+      function getPos(e){
+        const r = canv.getBoundingClientRect();
+        return {x: (e.touches?e.touches[0].clientX : e.clientX) - r.left, y: (e.touches?e.touches[0].clientY : e.clientY)-r.top};
+      }
+      canv.addEventListener('mousedown', start); canv.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+      canv.addEventListener('touchstart', start,{passive:false}); canv.addEventListener('touchmove', move,{passive:false}); canv.addEventListener('touchend', end);
+
+      const controls = document.createElement('div'); controls.style.marginTop='8px';
+      const clearBtn = document.createElement('button'); clearBtn.className='btn secondary'; clearBtn.textContent='Clear';
+      const saveBtn = document.createElement('button'); saveBtn.className='btn'; saveBtn.textContent='Save Signature';
+      controls.appendChild(clearBtn); controls.appendChild(saveBtn);
+      clearBtn.addEventListener('click', ()=>{ ctx.clearRect(0,0,canv.width,canv.height); });
+      saveBtn.addEventListener('click', ()=>{
+        // trim blank space & produce PNG
+        const trimmed = trimCanvas(canv);
+        signatureDataUrl = trimmed.toDataURL('image/png');
+        updateCurrentSigBox();
+        closeModalFn();
+      });
+
+      modalBody.appendChild(canv); modalBody.appendChild(controls);
+      openModal();
+    });
+
+    // typed signature
+    typeSigBtn.addEventListener('click', ()=>{
+      modalTitle.textContent = 'Type Signature';
+      modalBody.innerHTML = '';
+      const input = document.createElement('input'); input.type='text'; input.placeholder='Type your name'; input.style.width='100%'; input.style.padding='10px'; input.style.fontSize='20px';
+      const fontSel = document.createElement('select'); fontSel.style.marginTop='8px'; fontSel.style.width='100%';
+      ['Pacifico','Great Vibes','Dancing Script','Segoe UI','Roboto'].forEach(f=>{ const opt=document.createElement('option'); opt.value=f; opt.textContent=f; fontSel.appendChild(opt); });
+
+      // we will use canvas to render typed text
+      const canv = document.createElement('canvas'); canv.width=800; canv.height=200; canv.style.width='100%'; canv.style.height='120px'; canv.style.border='1px solid #e6eef2'; canv.style.borderRadius='8px';
+      const ctx = canv.getContext('2d');
+
+      function renderText(){
+        ctx.clearRect(0,0,canv.width,canv.height);
+        const text = input.value || 'Signature';
+        const font = (fontSel.value.includes(' ')? fontSel.value : fontSel.value) + ' 48px';
+        ctx.font = `48px ${fontSel.value}`;
+        ctx.textBaseline='middle';
+        ctx.fillStyle='#000';
+        ctx.fillText(text, 20, canv.height/2);
+      }
+      input.addEventListener('input', renderText); fontSel.addEventListener('change', renderText);
+
+      const controls = document.createElement('div'); controls.style.marginTop='8px';
+      const saveBtn = document.createElement('button'); saveBtn.className='btn'; saveBtn.textContent='Save Signature';
+      controls.appendChild(saveBtn);
+      saveBtn.addEventListener('click', ()=>{
+        signatureDataUrl = trimCanvas(canv).toDataURL('image/png');
+        updateCurrentSigBox(); closeModalFn();
+      });
+
+      modalBody.appendChild(input); modalBody.appendChild(fontSel); modalBody.appendChild(canv); modalBody.appendChild(controls);
+      renderText(); openModal();
+    });
+
+    // upload signature image
+    uploadSigBtn.addEventListener('click', ()=>{
+      const inp = document.createElement('input'); inp.type='file'; inp.accept='image/*';
+      inp.addEventListener('change', ()=>{
+        const f = inp.files[0]; if(!f) return; const reader=new FileReader(); reader.onload=()=>{ signatureDataUrl = reader.result; updateCurrentSigBox(); }; reader.readAsDataURL(f);
+      });
+      inp.click();
+    });
+
+    function updateCurrentSigBox(){
+      currentSigBox.innerHTML = '';
+      if(!signatureDataUrl){ currentSigBox.innerHTML = '<div class="muted">No signature saved</div>'; return; }
+      const img = document.createElement('img'); img.src = signatureDataUrl; img.style.maxWidth='100%'; img.style.height='60px'; img.style.objectFit='contain'; img.style.borderRadius='6px';
+      currentSigBox.appendChild(img);
+    }
+
+    function openModal(){ modal.classList.add('open'); }
+    function closeModalFn(){ modal.classList.remove('open'); }
+    closeModal.addEventListener('click', closeModalFn);
+
+    // helper to trim canvas whitespace
+    function trimCanvas(c){
+      const ctx = c.getContext('2d');
+      const w = c.width; const h = c.height;
+      const pix = ctx.getImageData(0,0,w,h).data;
+      let top=h, left=w, right=0, bottom=0;
+      for(let y=0;y<h;y++){
+        for(let x=0;x<w;x++){
+          const idx = (y*w + x)*4;
+          if(pix[idx+3]>10){ // alpha > 10
+            if(x<left) left=x; if(x>right) right=x; if(y<top) top=y; if(y>bottom) bottom=y;
+          }
+        }
+      }
+      if(right<left || bottom<top){ // empty
+        return document.createElement('canvas');
+      }
+      const trimW = right-left+1; const trimH = bottom-top+1;
+      const copy = document.createElement('canvas'); copy.width=trimW; copy.height=trimH;
+      copy.getContext('2d').putImageData(ctx.getImageData(left,top,trimW,trimH),0,0);
+      return copy;
+    }
+
+    // placing signature on page
+    function placeSignatureOnPage(pageNumber, x, y){
+      const pinfo = pageRenderInfos.find(p=>p.pageNumber==pageNumber);
+      if(!pinfo) return;
+      const overlay = pinfo.overlay;
+      const img = document.createElement('img'); img.src = signatureDataUrl; img.className='sig-item'; img.style.pointerEvents='auto';
+      // default size based on page width
+      const defaultWidth = Math.min(200, pinfo.canvasWidth * 0.4);
+      img.style.width = defaultWidth + 'px'; img.style.height = 'auto';
+      // position center at click
+      const rectW = overlay.clientWidth; const rectH = overlay.clientHeight;
+      const left = Math.max(4, x - defaultWidth/2);
+      const top = Math.max(4, y - 25);
+      img.style.left = left + 'px'; img.style.top = top + 'px';
+
+      const resize = document.createElement('div'); resize.className='resize-handle'; img.appendChild(resize);
+
+      overlay.appendChild(img);
+
+      // make draggable
+      makeDraggableAndResizable(img, pinfo);
+
+      // disable placing mode after placing one signature
+      placingMode = false; placeSigBtn.textContent='Place Signature';
+    }
+
+    function makeDraggableAndResizable(el, pinfo){
+      let isDragging=false, startX=0, startY=0, origLeft=0, origTop=0;
+      el.addEventListener('pointerdown', (ev)=>{
+        if(ev.target.classList.contains('resize-handle')) return; // handled elsewhere
+        isDragging=true; el.style.cursor='grabbing'; startX=ev.clientX; startY=ev.clientY; const r=el.getBoundingClientRect(); const parentR = el.parentElement.getBoundingClientRect(); origLeft = r.left - parentR.left; origTop = r.top - parentR.top; el.setPointerCapture(ev.pointerId);
+      });
+      window.addEventListener('pointermove', (ev)=>{ if(!isDragging) return; const dx = ev.clientX - startX; const dy = ev.clientY - startY; el.style.left = Math.max(0, origLeft + dx) + 'px'; el.style.top = Math.max(0, origTop + dy) + 'px'; });
+      window.addEventListener('pointerup', (ev)=>{ if(!isDragging) return; isDragging=false; el.style.cursor='grab'; });
+
+      // resizing
+      const handle = el.querySelector('.resize-handle');
+      let isResizing=false, startW=0, startH=0, startClientX=0, startClientY=0;
+      handle.addEventListener('pointerdown',(ev)=>{ isResizing=true; startW=el.offsetWidth; startH=el.offsetHeight; startClientX=ev.clientX; startClientY=ev.clientY; handle.setPointerCapture(ev.pointerId); ev.stopPropagation(); });
+      window.addEventListener('pointermove',(ev)=>{ if(!isResizing) return; const dx = ev.clientX - startClientX; const newW = Math.max(32, startW + dx); el.style.width = newW + 'px'; });
+      window.addEventListener('pointerup',(ev)=>{ if(isResizing) isResizing=false; });
+
+      // allow double tap to remove
+      el.addEventListener('dblclick', ()=>{ if(confirm('Remove this signature?')) el.remove(); });
+
+      // store metadata for export: data-page, left, top, width
+      el.dataset.page = pinfo.pageNumber;
+    }
+
+    // toggle placing mode
+    placeSigBtn.addEventListener('click', ()=>{
+      placingMode = !placingMode;
+      placeSigBtn.textContent = placingMode? 'Tap a page to place' : 'Place Signature';
+    });
+
+    resetBtn.addEventListener('click', ()=>{ if(!confirm('Remove all placed signatures?')) return; pageRenderInfos.forEach(p=>{ p.overlay.innerHTML=''; }); });
+
+    // download signed PDF using pdf-lib
+    downloadBtn.addEventListener('click', async ()=>{
+      if(!rawPdfBytes){ alert('No PDF loaded'); return; }
+      // collect all placed signatures
+      const placed = [];
+      pageRenderInfos.forEach(p=>{
+        const imgs = p.overlay.querySelectorAll('.sig-item');
+        imgs.forEach(img=>{
+          const rect = img.getBoundingClientRect();
+          const parentRect = p.overlay.getBoundingClientRect();
+          const left = rect.left - parentRect.left;
+          const top = rect.top - parentRect.top;
+          const width = rect.width;
+          const height = rect.height;
+          placed.push({page: p.pageNumber, left, top, width, height, pinfo: p, src: img.src});
+        });
+      });
+      if(placed.length===0){ if(!confirm('No signatures placed. Download original PDF instead?')) return; }
+
+      // load with pdf-lib
+      const uint8 = new Uint8Array(rawPdfBytes);
+      const pdfDocLib = await PDFLib.PDFDocument.load(uint8);
+
+      for(const item of placed){
+        const page = pdfDocLib.getPage(item.page - 1);
+        // embed image
+        const pngImageBytes = await fetch(item.src).then(r=>r.arrayBuffer());
+        const pngImage = await pdfDocLib.embedPng(pngImageBytes);
+
+        // mapping coordinates
+        // pinfo holds canvasWidth/canvasHeight and pdfWidth/pdfHeight
+        const pinfo = item.pinfo;
+        const xRatio = pinfo.pdfWidth / pinfo.canvasWidth; // PDF point per canvas pixel
+        const yRatio = pinfo.pdfHeight / pinfo.canvasHeight;
+
+        const xPdf = item.left * xRatio;
+        // HTML y is measured from top; PDF y is from bottom
+        const yPdf = pinfo.pdfHeight - ((item.top + item.height) * yRatio);
+
+        const imgW = item.width * xRatio;
+        const imgH = item.height * yRatio;
+
+        page.drawImage(pngImage, { x: xPdf, y: yPdf, width: imgW, height: imgH });
+      }
+
+      const outBytes = await pdfDocLib.save();
+      const blob = new Blob([outBytes], {type:'application/pdf'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'signed.pdf'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // small UX: close modal on background click
+    modal.addEventListener('click',(e)=>{ if(e.target===modal) closeModalFn(); });
+
+    // done
+    console.log('E-Sign PDF tool ready');
+
+  })();
+  </script>
+</body>
+</html>

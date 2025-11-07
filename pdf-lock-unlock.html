@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PDF Lock & Unlock — Bright Green Tool</title>
+<style>
+:root{--green:#00c853;--green-dark:#00b14a;--bg:#ffffff;--muted:#6b6b6b;--radius:14px;--shadow:0 6px 20px rgba(0,0,0,0.08);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,Arial}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#f7fff9,#ffffff);color:#0a0a0a}
+.app{max-width:900px;margin:28px auto;padding:20px}
+header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.logo{width:56px;height:56px;border-radius:12px;background:var(--green);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px;box-shadow:var(--shadow)}
+h1{margin:0;font-size:20px}
+p.lead{margin:4px 0 14px;color:var(--muted)}
+.card{background:var(--bg);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:18px}
+.drop{border:2px dashed rgba(0,0,0,0.06);padding:20px;border-radius:12px;text-align:center;min-height:150px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px}
+.drop.dragover{border-color:var(--green-dark);background:rgba(0,200,83,0.06)}
+.btn{background:var(--green);color:#fff;padding:10px 14px;border-radius:10px;border:0;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+.btn.ghost{background:transparent;color:var(--green);border:1.5px solid rgba(0,0,0,0.06)}
+input[type="password"],input[type="text"]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);margin-top:6px}
+footer{text-align:center;color:var(--muted);font-size:13px;margin-top:20px}
+.downloads{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">🔐</div>
+    <div>
+      <h1>PDF Lock & Unlock</h1>
+      <p class="lead">Secure a PDF with a password, or remove the password (if known). Files never leave your browser.</p>
+    </div>
+  </header>
+
+  <div class="card">
+    <h3>1) Upload PDF</h3>
+    <div id="drop" class="drop" tabindex="0">
+      <strong>Drag & Drop PDF here</strong>
+      <div class="muted">or</div>
+      <button id="browse" class="btn">Browse</button>
+      <input id="fileInput" type="file" accept="application/pdf" style="display:none" />
+    </div>
+    <div id="fileStatus" style="margin-top:10px;color:var(--muted)"></div>
+  </div>
+
+  <div class="card">
+    <h3>2) Lock (Add Password)</h3>
+    <label>Set Password:</label>
+    <input id="lockPass" type="password" placeholder="Enter password" />
+    <button id="lockBtn" class="btn" style="margin-top:10px">Lock PDF</button>
+    <div id="lockStatus" style="margin-top:10px;color:var(--muted)"></div>
+  </div>
+
+  <div class="card">
+    <h3>3) Unlock (Remove Password)</h3>
+    <label>Enter Existing Password:</label>
+    <input id="unlockPass" type="password" placeholder="PDF password" />
+    <button id="unlockBtn" class="btn" style="margin-top:10px">Unlock PDF</button>
+    <div id="unlockStatus" style="margin-top:10px;color:var(--muted)"></div>
+  </div>
+
+  <div class="card">
+    <h3>Downloads</h3>
+    <div id="downloads" class="downloads"><span class="muted">No files yet</span></div>
+  </div>
+
+  <footer>Bright green & white theme — mobile responsive.</footer>
+</div>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist/build/pdf.min.js"></script>
+
+<script>
+const { PDFDocument } = PDFLib;
+const drop = document.getElementById('drop');
+const browse = document.getElementById('browse');
+const fileInput = document.getElementById('fileInput');
+const fileStatus = document.getElementById('fileStatus');
+const lockBtn = document.getElementById('lockBtn');
+const lockPass = document.getElementById('lockPass');
+const lockStatus = document.getElementById('lockStatus');
+const unlockBtn = document.getElementById('unlockBtn');
+const unlockPass = document.getElementById('unlockPass');
+const unlockStatus = document.getElementById('unlockStatus');
+const downloads = document.getElementById('downloads');
+
+let currentFile = null;
+
+browse.addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change',e=>selectFile(e.target.files[0]));
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('dragover');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('dragover');}));
+drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];selectFile(f);});
+drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')fileInput.click();});
+
+function selectFile(file){
+  if(!file || file.type!=='application/pdf'){fileStatus.textContent='Please select a PDF file.';return;}
+  currentFile=file;
+  fileStatus.textContent='Selected: '+file.name;
+}
+
+function addDownload(blob, name){
+  const url=URL.createObjectURL(blob);
+  const div=document.createElement('div');
+  const a=document.createElement('a');a.href=url;a.download=name;a.textContent='Download '+name;a.className='btn';
+  const open=document.createElement('a');open.href=url;open.target='_blank';open.textContent='Open';open.className='btn ghost';
+  div.style.display='flex';div.style.gap='8px';
+  div.append(a,open);
+  downloads.appendChild(div);
+}
+
+// Lock PDF
+lockBtn.addEventListener('click',async()=>{
+  if(!currentFile){lockStatus.textContent='Upload a PDF first.';return;}
+  if(!lockPass.value){lockStatus.textContent='Enter a password.';return;}
+  lockStatus.textContent='Locking...';
+  try{
+    const ab=await currentFile.arrayBuffer();
+    const pdf=await PDFDocument.load(ab);
+    const bytes=await pdf.save({password:lockPass.value,ownerPassword:lockPass.value});
+    addDownload(new Blob([bytes],{type:'application/pdf'}), currentFile.name.replace(/\.pdf$/,'')+'_locked.pdf');
+    lockStatus.textContent='Done.';
+  }catch(e){lockStatus.textContent='Error: '+e.message;}
+});
+
+// Unlock PDF (render & rebuild)
+unlockBtn.addEventListener('click',async()=>{
+  if(!currentFile){unlockStatus.textContent='Upload a PDF first.';return;}
+  if(!unlockPass.value){unlockStatus.textContent='Enter the existing password.';return;}
+  unlockStatus.textContent='Unlocking... (may take time)';
+  try{
+    const ab=await currentFile.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:ab,password:unlockPass.value}).promise;
+    const out=await PDFDocument.create();
+
+    for(let i=1;i<=pdf.numPages;i++){
+      const page=await pdf.getPage(i);
+      const viewport=page.getViewport({scale:2});
+      const canvas=document.createElement('canvas');
+      canvas.width=viewport.width;canvas.height=viewport.height;
+      await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+      const png=await out.embedPng(canvas.toDataURL());
+      const p=out.addPage([viewport.width,viewport.height]);
+      p.drawImage(png,{x:0,y:0,width:viewport.width,height:viewport.height});
+    }
+
+    const bytes=await out.save();
+    addDownload(new Blob([bytes],{type:'application/pdf'}), currentFile.name.replace(/\.pdf$/,'')+'_unlocked.pdf');
+    unlockStatus.textContent='Done.';
+  }catch(e){unlockStatus.textContent='Failed: Wrong password or unsupported encryption.';}
+});
+</script>
+</body>
+</html>

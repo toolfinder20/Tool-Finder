@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Document Converter — Bright Green Tool</title>
+  <style>
+    :root{--green:#00c853;--green-dark:#00b14a;--bg:#fff;--muted:#666;--radius:12px;--shadow:0 8px 22px rgba(0,0,0,0.08);font-family:Inter,system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#f7fff9,#ffffff);color:#061018}
+    .app{max-width:980px;margin:28px auto;padding:18px}
+    header{display:flex;gap:14px;align-items:center}
+    .logo{width:56px;height:56px;border-radius:12px;background:var(--green);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    h1{margin:0;font-size:20px}
+    p.lead{margin:6px 0 16px;color:var(--muted)}
+    .card{background:var(--bg);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:16px}
+    .grid{display:grid;grid-template-columns:1fr 320px;gap:16px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    .drop{border:2px dashed rgba(0,0,0,0.06);padding:18px;border-radius:10px;display:flex;flex-direction:column;gap:10px;align-items:center;min-height:150px}
+    .btn{background:var(--green);color:#fff;padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+    .btn.ghost{background:transparent;border:1px solid rgba(0,0,0,0.06);color:var(--green)}
+    select,input[type=file]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)}
+    .row{display:flex;gap:8px}
+    .small{padding:8px 10px;border-radius:8px}
+    footer{color:var(--muted);text-align:center;margin-top:14px;font-size:13px}
+    .download-list{display:flex;flex-direction:column;gap:8px}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">DOC</div>
+      <div>
+        <h1>Document Converter</h1>
+        <p class="lead">Convert between PDF, DOCX and TXT — fully client-side. Files never leave your browser.</p>
+      </div>
+    </header>
+
+    <div class="grid">
+      <main>
+        <div class="card">
+          <h3>1) Choose file</h3>
+          <div id="drop" class="drop" tabindex="0">
+            <div style="text-align:center">
+              <strong>Drag & drop or browse</strong>
+              <div style="margin-top:10px;" class="muted">Supported: .pdf, .docx, .txt</div>
+              <div style="margin-top:10px"><button id="browse" class="btn">Browse files</button></div>
+              <input id="inputFile" type="file" accept=".pdf,.docx,.txt" style="display:none">
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <label>Output format</label>
+            <select id="outputFormat">
+              <option value="pdf">PDF</option>
+              <option value="docx">DOCX</option>
+              <option value="txt">TXT</option>
+            </select>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="convertBtn" class="btn">Convert</button>
+            <button id="resetBtn" class="btn ghost">Clear</button>
+          </div>
+
+          <div id="status" style="margin-top:12px;color:var(--muted)"></div>
+        </div>
+
+        <div class="card">
+          <h3>Notes</h3>
+          <ul style="padding-left:18px;color:var(--muted)">
+            <li>Conversion is best-effort: complex PDFs or DOCX with advanced formatting may lose styling.</li>
+            <li>DOCX → PDF/TXT uses an HTML intermediate; PDF → TXT extracts page text when possible.</li>
+            <li>If a conversion cannot be done client-side, a helpful error will appear.</li>
+          </ul>
+        </div>
+      </main>
+
+      <aside>
+        <div class="card">
+          <h3>Downloads</h3>
+          <div id="downloads" class="download-list"><div class="muted">No files yet</div></div>
+        </div>
+
+        <div class="card">
+          <h3>Quick actions</h3>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button id="downloadAll" class="btn ghost">Download all</button>
+            <button id="copyText" class="btn ghost">Copy extracted text</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>Bright green & white theme — mobile responsive.</footer>
+  </div>
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.9.3/dist/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docx@7.6.1/build/index.umd.min.js"></script>
+
+  <script>
+    // Dependencies accessible: PDFLib (PDFDocument), mammoth, html2pdf, pdfjsLib, docx
+    const inputFile = document.getElementById('inputFile');
+    const browse = document.getElementById('browse');
+    const drop = document.getElementById('drop');
+    const outputFormat = document.getElementById('outputFormat');
+    const convertBtn = document.getElementById('convertBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const status = document.getElementById('status');
+    const downloads = document.getElementById('downloads');
+    const downloadAll = document.getElementById('downloadAll');
+    const copyText = document.getElementById('copyText');
+
+    let currentFile = null;
+    let downloadItems = []; // {name,url}
+    let extractedTextCache = '';
+
+    browse.addEventListener('click', ()=> inputFile.click());
+    inputFile.addEventListener('change', e=>selectFile(e.target.files[0]));
+    ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev, e=>{e.preventDefault();drop.style.borderColor='var(--green-dark)'}));
+    ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev, e=>{e.preventDefault();drop.style.borderColor='rgba(0,0,0,0.06)'}));
+    drop.addEventListener('drop', e=>{ e.preventDefault(); const f = e.dataTransfer.files[0]; selectFile(f); });
+
+    function selectFile(file){
+      if(!file) return;
+      const ok = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','text/plain'];
+      if(!ok.includes(file.type) && !file.name.match(/\.docx$/i)){
+        status.textContent = 'Unsupported file type. Use PDF, DOCX or TXT.'; return;
+      }
+      currentFile = file;
+      status.textContent = `Selected: ${file.name}`;
+      downloads.innerHTML=''; downloadItems=[]; extractedTextCache='';
+    }
+
+    resetBtn.addEventListener('click', ()=>{ currentFile=null; inputFile.value=''; status.textContent=''; downloads.innerHTML='<div class="muted">No files yet</div>'; downloadItems=[]; extractedTextCache=''; });
+
+    async function convert(){
+      if(!currentFile){ status.textContent='Choose a file first.'; return; }
+      const out = outputFormat.value;
+      status.textContent='Converting...';
+      try{
+        const nameBase = currentFile.name.replace(/\.[^\.]+$/,'');
+        if(currentFile.type==='text/plain' || currentFile.name.match(/\.txt$/i)){
+          const txt = await currentFile.text();
+          extractedTextCache = txt;
+          if(out==='txt'){ createDownload(new Blob([txt],{type:'text/plain'}), nameBase+'.txt'); status.textContent='Done.'; }
+          else if(out==='pdf'){ // render simple HTML and use html2pdf
+            const container = document.createElement('div'); container.style.padding='12px'; container.innerHTML = `<pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(txt)}</pre>`;
+            const opt = {margin:10,filename:nameBase+'.pdf',enableLinks:false,pagebreak:{mode:'css'}};
+            await html2pdf().from(container).set(opt).toPdf().save();
+            status.textContent='Done.';
+          } else if(out==='docx'){
+            const { Document, Packer, Paragraph, TextRun } = docx;
+            const doc = new Document();
+            const lines = txt.split(/\r?\n/);
+            lines.forEach(l => doc.addSection({children:[ new Paragraph({children:[ new TextRun(l) ]}) ]}));
+            const blob = await Packer.toBlob(doc);
+            createDownload(blob, nameBase+'.docx'); status.textContent='Done.';
+          }
+        }
+        else if(currentFile.type==='application/vnd.openxmlformats-officedocument.wordprocessingml.document' || currentFile.name.match(/\.docx$/i)){
+          const arrayBuffer = await currentFile.arrayBuffer();
+          // use mammoth to convert to html/text
+          const res = await mammoth.convertToHtml({arrayBuffer});
+          const html = res.value || '';
+          const text = (new DOMParser()).parseFromString(html,'text/html').body.innerText;
+          extractedTextCache = text;
+          if(out==='txt'){ createDownload(new Blob([text],{type:'text/plain'}), nameBase+'.txt'); status.textContent='Done.'; }
+          else if(out==='pdf'){ // convert HTML to PDF via html2pdf
+            const container = document.createElement('div'); container.style.padding='12px'; container.innerHTML = html;
+            const opt = {margin:10,filename:nameBase+'.pdf',enableLinks:false,pagebreak:{mode:'css'}};
+            await html2pdf().from(container).set(opt).toPdf().save(); status.textContent='Done.';
+          } else if(out==='docx'){ // pass through original
+            createDownload(new Blob([arrayBuffer],{type:currentFile.type}), currentFile.name); status.textContent='Downloaded original DOCX.'; }
+        }
+        else if(currentFile.type==='application/pdf' || currentFile.name.match(/\.pdf$/i)){
+          // use pdfjs to extract text
+          const arrayBuffer = await currentFile.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+          let fullText = '';
+          for(let i=1;i<=pdf.numPages;i++){
+            const page = await pdf.getPage(i);
+            const txt = await page.getTextContent();
+            const pageText = txt.items.map(it=>it.str).join(' ');
+            fullText += pageText + '\n\n';
+          }
+          extractedTextCache = fullText.trim();
+          if(out==='txt'){ createDownload(new Blob([extractedTextCache],{type:'text/plain'}), nameBase+'.txt'); status.textContent='Done.'; }
+          else if(out==='docx'){
+            const { Document, Packer, Paragraph, TextRun } = docx;
+            const doc = new Document();
+            const lines = extractedTextCache.split(/\r?\n/);
+            lines.forEach(l => doc.addSection({children:[ new Paragraph({children:[ new TextRun(l) ]}) ]}));
+            const blob = await Packer.toBlob(doc);
+            createDownload(blob, nameBase+'.docx'); status.textContent='Done.';
+          } else if(out==='pdf'){
+            // pass-through original
+            createDownload(new Blob([arrayBuffer],{type:'application/pdf'}), currentFile.name); status.textContent='Downloaded original PDF.';
+          }
+        }
+
+      }catch(err){ console.error(err); status.textContent = 'Conversion failed: '+ (err.message||err); }
+    }
+
+    function createDownload(blob, filename){
+      const url = URL.createObjectURL(blob);
+      downloadItems.push({name:filename,url});
+      renderDownloads();
+    }
+
+    function renderDownloads(){
+      downloads.innerHTML='';
+      downloadItems.forEach(it=>{
+        const d = document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.style.alignItems='center';
+        const a = document.createElement('a'); a.href=it.url; a.download=it.name; a.textContent=`Download ${it.name}`; a.className='btn';
+        const open = document.createElement('a'); open.href=it.url; open.target='_blank'; open.textContent='Open'; open.className='btn ghost';
+        d.appendChild(a); d.appendChild(open);
+        downloads.appendChild(d);
+      });
+      if(downloadItems.length===0) downloads.innerHTML='<div class="muted">No files yet</div>';
+    }
+
+    convertBtn.addEventListener('click', convert);
+
+    downloadAll.addEventListener('click', ()=>{
+      if(downloadItems.length===0){ status.textContent='Nothing to download.'; return; }
+      downloadItems.forEach(it=>{
+        const a = document.createElement('a'); a.href=it.url; a.download=it.name; document.body.appendChild(a); a.click(); a.remove();
+      });
+    });
+
+    copyText.addEventListener('click', async ()=>{
+      if(!extractedTextCache){ status.textContent='No extracted text available.'; return; }
+      try{ await navigator.clipboard.writeText(extractedTextCache); status.textContent='Text copied to clipboard.'; }catch(e){ status.textContent='Clipboard copy failed.'; }
+    });
+
+    function escapeHtml(unsafe){ return unsafe.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // small accessibility
+    drop.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') inputFile.click(); });
+
+    // init
+    downloads.innerHTML='<div class="muted">No files yet</div>';
+
+  </script>
+</body>
+</html>

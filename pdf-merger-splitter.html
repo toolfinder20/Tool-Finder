@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF Merger & Splitter — Bright Green Tool</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <style>
+    :root{
+      --green:#00c853; /* bright green */
+      --green-dark:#00b14a;
+      --bg:#ffffff;
+      --muted:#6b6b6b;
+      --radius:14px;
+      --shadow: 0 6px 20px rgba(0,0,0,0.08);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#f7fff9, #ffffff);color:#0a0a0a}
+    .app{
+      max-width:980px;margin:28px auto;padding:20px;
+    }
+
+    header{display:flex;align-items:center;gap:16px}
+    .logo{
+      width:56px;height:56px;border-radius:12px;background:var(--green);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px;box-shadow:var(--shadow)
+    }
+    h1{font-size:20px;margin:0}
+    p.lead{margin:6px 0 18px;color:var(--muted)}
+
+    .card{background:var(--bg);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:18px}
+
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:16px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+
+    /* upload area */
+    .drop{border:2px dashed rgba(0,0,0,0.06);padding:18px;border-radius:12px;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;min-height:160px}
+    .drop.dragover{background:linear-gradient(90deg, rgba(0,200,83,0.06), rgba(0,200,83,0.02));border-color:var(--green-dark)}
+    .btn{background:var(--green);color:#fff;padding:10px 14px;border-radius:10px;border:0;font-weight:600;cursor:pointer}
+    .btn.ghost{background:transparent;color:var(--green);border:1.5px solid rgba(0,0,0,0.06)}
+
+    .files-list{display:flex;flex-direction:column;gap:8px}
+    .file-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.04)}
+    .file-info{flex:1;min-width:0}
+    .file-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .file-meta{font-size:12px;color:var(--muted)}
+    .controls{display:flex;gap:8px}
+    .small{padding:6px 8px;border-radius:8px;font-size:13px}
+
+    /* split options */
+    label{display:block;font-size:13px;margin-bottom:6px}
+    input[type="text"], input[type="number"], select{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)}
+
+    footer{margin-top:20px;text-align:center;color:var(--muted);font-size:13px}
+
+    /* tiny responsive touches */
+    @media (max-width:520px){.logo{width:44px;height:44px;font-size:18px}
+      .card{padding:14px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">PDF</div>
+      <div>
+        <h1>PDF Merger & Splitter</h1>
+        <p class="lead">Merge multiple PDFs into one, or split a PDF into pages or custom ranges. Fully client-side — files never leave the browser.</p>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h3>1) Upload files</h3>
+          <div id="dropArea" class="drop" tabindex="0">
+            <div style="text-align:center">
+              <strong>Drag & drop PDFs here</strong>
+              <div style="margin-top:8px;color:var(--muted)">or</div>
+              <div style="margin-top:10px"><button id="browseBtn" class="btn">Browse files</button></div>
+              <input id="fileInput" type="file" accept="application/pdf" multiple style="display:none" />
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <strong>Files to merge</strong>
+              <div style="color:var(--muted);font-size:13px">You can reorder files</div>
+            </div>
+            <div id="filesList" class="files-list"></div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="mergeBtn" class="btn">Merge PDFs</button>
+            <button id="clearBtn" class="btn ghost">Clear list</button>
+          </div>
+
+          <div id="mergeStatus" style="margin-top:12px;color:var(--muted)"></div>
+        </div>
+
+        <div class="card">
+          <h3>2) Split a PDF</h3>
+          <label for="splitInput">Choose PDF to split</label>
+          <input id="splitInput" type="file" accept="application/pdf" />
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <div style="flex:1">
+              <label>Split mode</label>
+              <select id="splitMode">
+                <option value="pages">Individual pages</option>
+                <option value="ranges">Custom ranges (e.g. 1,3-5)</option>
+              </select>
+            </div>
+            <div style="width:160px">
+              <label id="rangeLabel">Ranges</label>
+              <input id="ranges" placeholder="e.g. 1,3-5" />
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="splitBtn" class="btn">Split PDF</button>
+            <button id="splitClear" class="btn ghost">Clear</button>
+          </div>
+          <div id="splitStatus" style="margin-top:12px;color:var(--muted)"></div>
+        </div>
+      </div>
+
+      <aside>
+        <div class="card">
+          <h3>Quick tips</h3>
+          <ul style="padding-left:18px;color:var(--muted)">
+            <li>Files are processed in your browser — no uploads.</li>
+            <li>For best performance, avoid extremely large PDFs on low-memory devices.</li>
+            <li>Use the Clear buttons to reset state.</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>Downloads</h3>
+          <div id="downloadArea" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>Made with ❤️ — bright green theme. Works on mobile and desktop.</footer>
+  </div>
+
+  <!-- libraries: PDF-lib and JSZip -->
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <script>
+    const { PDFDocument } = PDFLib;
+
+    // UI elements
+    const fileInput = document.getElementById('fileInput');
+    const browseBtn = document.getElementById('browseBtn');
+    const dropArea = document.getElementById('dropArea');
+    const filesList = document.getElementById('filesList');
+    const mergeBtn = document.getElementById('mergeBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const mergeStatus = document.getElementById('mergeStatus');
+    const downloadArea = document.getElementById('downloadArea');
+
+    const splitInput = document.getElementById('splitInput');
+    const splitMode = document.getElementById('splitMode');
+    const rangesInput = document.getElementById('ranges');
+    const rangeLabel = document.getElementById('rangeLabel');
+    const splitBtn = document.getElementById('splitBtn');
+    const splitClear = document.getElementById('splitClear');
+    const splitStatus = document.getElementById('splitStatus');
+
+    let filesToMerge = []; // array of File
+
+    browseBtn.addEventListener('click', ()=> fileInput.click());
+    fileInput.addEventListener('change', e => handleFiles(Array.from(e.target.files)));
+
+    // drag & drop
+    ['dragenter','dragover'].forEach(ev=>dropArea.addEventListener(ev, e=>{
+      e.preventDefault();e.stopPropagation();dropArea.classList.add('dragover');
+    }));
+    ['dragleave','drop'].forEach(ev=>dropArea.addEventListener(ev, e=>{
+      e.preventDefault();e.stopPropagation();dropArea.classList.remove('dragover');
+    }));
+    dropArea.addEventListener('drop', e=>{
+      const dt = e.dataTransfer; const list = Array.from(dt.files).filter(f=>f.type==='application/pdf');
+      handleFiles(list);
+    });
+
+    function handleFiles(list){
+      const pdfs = list.filter(f=>f.type==='application/pdf');
+      pdfs.forEach(f=> filesToMerge.push(f));
+      renderFilesList();
+    }
+
+    function renderFilesList(){
+      filesList.innerHTML = '';
+      filesToMerge.forEach((file, idx)=>{
+        const row = document.createElement('div'); row.className='file-row';
+        const info = document.createElement('div'); info.className='file-info';
+        const name = document.createElement('div'); name.className='file-name'; name.textContent = file.name;
+        const meta = document.createElement('div'); meta.className='file-meta'; meta.textContent = `${Math.round(file.size/1024)} KB`;
+        info.appendChild(name); info.appendChild(meta);
+
+        const controls = document.createElement('div'); controls.className='controls';
+        const up = document.createElement('button'); up.className='small'; up.textContent='↑'; up.title='Move up';
+        const down = document.createElement('button'); down.className='small'; down.textContent='↓'; down.title='Move down';
+        const remove = document.createElement('button'); remove.className='small'; remove.textContent='Remove';
+
+        up.addEventListener('click', ()=>{ if(idx>0){ [filesToMerge[idx-1],filesToMerge[idx]]=[filesToMerge[idx],filesToMerge[idx-1]]; renderFilesList(); } });
+        down.addEventListener('click', ()=>{ if(idx<filesToMerge.length-1){ [filesToMerge[idx+1],filesToMerge[idx]]=[filesToMerge[idx],filesToMerge[idx+1]]; renderFilesList(); } });
+        remove.addEventListener('click', ()=>{ filesToMerge.splice(idx,1); renderFilesList(); });
+
+        controls.appendChild(up); controls.appendChild(down); controls.appendChild(remove);
+        row.appendChild(info); row.appendChild(controls);
+        filesList.appendChild(row);
+      });
+    }
+
+    clearBtn.addEventListener('click', ()=>{ filesToMerge=[]; renderFilesList(); mergeStatus.textContent=''; downloadArea.innerHTML=''; });
+
+    async function mergePDFs(){
+      if(filesToMerge.length===0){ mergeStatus.textContent='Add at least one PDF to merge.'; return; }
+      mergeStatus.textContent='Merging...';
+      try{
+        const mergedPdf = await PDFDocument.create();
+        for(const file of filesToMerge){
+          const arrayBuffer = await file.arrayBuffer();
+          const donor = await PDFDocument.load(arrayBuffer);
+          const copied = await mergedPdf.copyPages(donor, donor.getPageIndices());
+          copied.forEach(p=> mergedPdf.addPage(p));
+        }
+        const mergedBytes = await mergedPdf.save();
+        const blob = new Blob([mergedBytes], {type:'application/pdf'});
+        const url = URL.createObjectURL(blob);
+        addDownloadLink(url, 'merged.pdf');
+        mergeStatus.textContent='Merge complete.';
+      }catch(err){ console.error(err); mergeStatus.textContent='Error while merging: '+err.message; }
+    }
+
+    mergeBtn.addEventListener('click', mergePDFs);
+
+    function addDownloadLink(url, filename){
+      const wrapper = document.createElement('div'); wrapper.style.display='flex'; wrapper.style.gap='8px'; wrapper.style.alignItems='center';
+      const a = document.createElement('a'); a.href = url; a.download = filename; a.textContent = `Download ${filename}`; a.className='btn';
+      const open = document.createElement('a'); open.href = url; open.target='_blank'; open.textContent='Open'; open.className='btn ghost';
+      wrapper.appendChild(a); wrapper.appendChild(open);
+      downloadArea.appendChild(wrapper);
+    }
+
+    // -------- Split logic --------
+    splitMode.addEventListener('change', ()=>{
+      rangesInput.disabled = splitMode.value === 'pages' ? true : false;
+      rangeLabel.textContent = splitMode.value === 'pages' ? 'Ranges (disabled)' : 'Ranges';
+    });
+
+    splitClear.addEventListener('click', ()=>{ splitInput.value=''; rangesInput.value=''; splitStatus.textContent=''; downloadArea.innerHTML=''; });
+
+    async function splitPDF(){
+      const file = splitInput.files[0];
+      if(!file){ splitStatus.textContent='Please choose a PDF to split.'; return; }
+      splitStatus.textContent='Processing...';
+      try{
+        const ab = await file.arrayBuffer();
+        const src = await PDFDocument.load(ab);
+        const total = src.getPageCount();
+
+        const zip = new JSZip();
+        if(splitMode.value === 'pages'){
+          for(let i=0;i<total;i++){
+            const out = await PDFDocument.create();
+            const [p] = await out.copyPages(src, [i]);
+            out.addPage(p);
+            const bytes = await out.save();
+            zip.file(`${file.name.replace(/\.pdf$/i,'')}_page_${i+1}.pdf`, bytes);
+          }
+        } else {
+          // parse ranges like 1,3-5
+          const rangesText = rangesInput.value.trim();
+          if(!rangesText){ splitStatus.textContent='Enter ranges like 1,3-5'; return; }
+          const ranges = parseRanges(rangesText, total);
+          if(ranges.length === 0){ splitStatus.textContent='No valid ranges parsed.'; return; }
+          let count=0;
+          for(const r of ranges){
+            const out = await PDFDocument.create();
+            const indices = [];
+            for(let p=r.start-1;p<=r.end-1;p++) indices.push(p);
+            const copied = await out.copyPages(src, indices);
+            copied.forEach(p=>out.addPage(p));
+            const bytes = await out.save();
+            count++;
+            zip.file(`${file.name.replace(/\.pdf$/i,'')}_part_${count}_${r.start}-${r.end}.pdf`, bytes);
+          }
+        }
+
+        const zipBlob = await zip.generateAsync({type:'blob'});
+        const url = URL.createObjectURL(zipBlob);
+        addDownloadLink(url, file.name.replace(/\.pdf$/i,'') + '_split.zip');
+        splitStatus.textContent = 'Split complete — download the ZIP.';
+      }catch(err){ console.error(err); splitStatus.textContent = 'Error: '+err.message; }
+    }
+
+    function parseRanges(text, max){
+      // returns array of {start,end}
+      const parts = text.split(',').map(s=>s.trim()).filter(Boolean);
+      const ranges = [];
+      for(const p of parts){
+        if(/^-?\d+$/.test(p)){
+          let n = Number(p);
+          if(n<1) continue; if(n>max) n=max;
+          ranges.push({start:n,end:n});
+        } else if(/^\d+-\d+$/.test(p)){
+          let [a,b] = p.split('-').map(Number);
+          if(a<1) a=1; if(b>max) b=max; if(a>b) continue;
+          ranges.push({start:a,end:b});
+        }
+      }
+      return ranges;
+    }
+
+    splitBtn.addEventListener('click', splitPDF);
+
+    // helper: keyboard accessible drop
+    dropArea.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') fileInput.click(); });
+
+    // small accessibility: show initial state
+    rangesInput.disabled = true;
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Compressor | GreenTools</title>
+
+  <!-- pdf-lib library for PDF compression -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background-color: #ffffff;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 5% auto;
+      padding: 2rem;
+      background: #f9f9f9;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    h1 {
+      color: #00c853;
+      margin-bottom: 0.5rem;
+    }
+
+    .upload-area {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    input[type="file"] {
+      padding: 0.6rem;
+      border: 2px dashed #00c853;
+      border-radius: 8px;
+      width: 100%;
+      background-color: #e8f5e9;
+      transition: all 0.3s ease;
+    }
+
+    input[type="file"]:hover {
+      background-color: #d9f7e2;
+    }
+
+    select {
+      padding: 0.5rem;
+      border: 2px solid #00c853;
+      border-radius: 6px;
+      background-color: #fff;
+      color: #333;
+    }
+
+    button {
+      background-color: #00c853;
+      color: white;
+      border: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #00a844;
+    }
+
+    #output {
+      margin-top: 1.5rem;
+      font-size: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        margin: 2rem;
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📦 PDF Compressor</h1>
+    <p>Compress your PDF files and reduce size instantly.</p>
+
+    <div class="upload-area">
+      <input type="file" id="pdfFile" accept="application/pdf" />
+      <label for="quality">Compression Level:</label>
+      <select id="quality">
+        <option value="0.7">Medium</option>
+        <option value="0.5">High</option>
+        <option value="0.3">Maximum</option>
+      </select>
+      <button id="compressBtn">Compress PDF</button>
+    </div>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const compressBtn = document.getElementById("compressBtn");
+    const pdfInput = document.getElementById("pdfFile");
+    const qualitySelect = document.getElementById("quality");
+    const outputDiv = document.getElementById("output");
+
+    compressBtn.addEventListener("click", async () => {
+      const file = pdfInput.files[0];
+      if (!file) {
+        alert("Please upload a PDF file first.");
+        return;
+      }
+
+      outputDiv.innerHTML = "<p>Compressing your file... please wait ⏳</p>";
+
+      const compressionLevel = parseFloat(qualitySelect.value);
+      const reader = new FileReader();
+
+      reader.onload = async function () {
+        try {
+          const arrayBuffer = this.result;
+          const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+
+          // Basic compression: re-save with object streams enabled
+          const compressedPdfBytes = await pdfDoc.save({
+            useObjectStreams: true,
+          });
+
+          // Create a blob and simulate download
+          const blob = new Blob([compressedPdfBytes], { type: "application/pdf" });
+          const downloadLink = document.createElement("a");
+          downloadLink.href = URL.createObjectURL(blob);
+          downloadLink.download = file.name.replace(".pdf", "-compressed.pdf");
+          downloadLink.click();
+
+          outputDiv.innerHTML = "<p>✅ Compression complete! Your file has been downloaded.</p>";
+        } catch (error) {
+          console.error("Error compressing PDF:", error);
+          outputDiv.innerHTML = "<p>❌ Something went wrong. Please try again.</p>";
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
+    });
+  </script>
+</body>
+</html>

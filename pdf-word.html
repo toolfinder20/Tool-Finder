@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF to Word Converter</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <!-- DOCX.js -->
+  <script src="https://unpkg.com/docx@8.1.0/build/index.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>📄 PDF to Word Converter</h1>
+    <p>Convert your PDF files to editable Word documents instantly.</p>
+
+    <div class="upload-box">
+      <input type="file" id="pdfFile" accept="application/pdf">
+      <button id="convertBtn">Convert to Word</button>
+    </div>
+
+    <div id="output"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

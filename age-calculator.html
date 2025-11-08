@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Age Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: #e8ffe8;
+      border: 2px solid #00cc44;
+      border-radius: 10px;
+      padding: 20px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+    h1 {
+      color: #00b33c;
+      margin-bottom: 15px;
+    }
+    input[type="date"] {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #00cc44;
+      border-radius: 5px;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    .result {
+      font-size: 18px;
+      font-weight: bold;
+      color: #007a29;
+    }
+    @media (max-width: 480px) {
+      h1 { font-size: 22px; }
+      .result { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Age Calculator</h1>
+    <input type="date" id="birthdate" />
+    <div class="result" id="result">Enter your birthdate</div>
+  </div>
+
+  <script>
+    const birthdateInput = document.getElementById('birthdate');
+    const resultText = document.getElementById('result');
+
+    birthdateInput.addEventListener('input', () => {
+      const birthDate = new Date(birthdateInput.value);
+      if (!birthdateInput.value) {
+        resultText.textContent = 'Enter your birthdate';
+        return;
+      }
+
+      const today = new Date();
+
+      let years = today.getFullYear() - birthDate.getFullYear();
+      let months = today.getMonth() - birthDate.getMonth();
+      let days = today.getDate() - birthDate.getDate();
+
+      if (days < 0) {
+        months--;
+        const previousMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += previousMonth.getDate();
+      }
+
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+
+      resultText.textContent = `${years} Years, ${months} Months, ${days} Days`;
+    });
+  </script>
+</body>
+</html>

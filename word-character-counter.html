@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Word Counter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #ffffff;
+      margin: 0;
+      padding: 20px;
+      color: #222;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+    }
+    h1 {
+      color: #00b300;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      padding: 10px;
+      border: 2px solid #00b300;
+      border-radius: 6px;
+      font-size: 16px;
+      resize: vertical;
+      outline: none;
+    }
+    .stats {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+    }
+    .stat-box {
+      background: #f8fff8;
+      padding: 15px;
+      border-left: 4px solid #00b300;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    .buttons {
+      margin-top: 20px;
+      text-align: center;
+    }
+    button {
+      background: #00b300;
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 0 8px;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Word Counter</h1>
+    <textarea id="textInput" placeholder="Type or paste your text here..."></textarea>
+
+    <div class="stats">
+      <div class="stat-box"><strong>Words:</strong> <span id="wordCount">0</span></div>
+      <div class="stat-box"><strong>Characters (no spaces):</strong> <span id="charNoSpaces">0</span></div>
+      <div class="stat-box"><strong>Characters (with spaces):</strong> <span id="charWithSpaces">0</span></div>
+      <div class="stat-box"><strong>Sentences:</strong> <span id="sentenceCount">0</span></div>
+      <div class="stat-box"><strong>Paragraphs:</strong> <span id="paragraphCount">0</span></div>
+    </div>
+
+    <div class="buttons">
+      <button id="clearBtn">Clear</button>
+    </div>
+  </div>
+
+  <script>
+    const textInput = document.getElementById('textInput');
+    const wordCount = document.getElementById('wordCount');
+    const charNoSpaces = document.getElementById('charNoSpaces');
+    const charWithSpaces = document.getElementById('charWithSpaces');
+    const sentenceCount = document.getElementById('sentenceCount');
+    const paragraphCount = document.getElementById('paragraphCount');
+    const clearBtn = document.getElementById('clearBtn');
+
+    function updateCounts() {
+      const text = textInput.value;
+
+      const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+      wordCount.textContent = words.length;
+
+      charNoSpaces.textContent = text.replace(/\s+/g, '').length;
+      charWithSpaces.textContent = text.length;
+
+      const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+      sentenceCount.textContent = sentences.length;
+
+      const paragraphs = text.split(/\n+/).filter(p => p.trim().length > 0);
+      paragraphCount.textContent = paragraphs.length;
+    }
+
+    textInput.addEventListener('input', updateCounts);
+
+    clearBtn.addEventListener('click', () => {
+      textInput.value = '';
+      updateCounts();
+    });
+
+    updateCounts();
+  </script>
+</body>
+</html>

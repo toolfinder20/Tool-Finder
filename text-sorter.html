@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Text Shortener — Bright Green & White</title>
+  <style>
+    :root{
+      --green: #00c853; /* bright green */
+      --green-dark: #009624;
+      --bg: #ffffff;
+      --muted: #6b7280;
+      --radius: 12px;
+      --glass: rgba(0,0,0,0.04);
+      --max-width: 980px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:linear-gradient(180deg, #f8fff8 0%, #ffffff 60%);
+      color:#0f172a;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:24px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .container{
+      width:100%;
+      max-width:var(--max-width);
+      background:var(--bg);
+      border-radius:16px;
+      box-shadow:0 8px 30px rgba(2,6,23,0.08);
+      padding:20px;
+      border:1px solid rgba(0,0,0,0.04);
+    }
+
+    header{display:flex;align-items:center;gap:14px}
+    .logo{
+      width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--green),var(--green-dark));
+      display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px;box-shadow:0 6px 18px rgba(0,200,83,0.18);
+    }
+    h1{margin:0;font-size:20px}
+    p.lead{margin:4px 0 12px;color:var(--muted);font-size:13px}
+
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px}
+    .card{background:linear-gradient(180deg, rgba(0,0,0,0.01), rgba(0,0,0,0.02));padding:14px;border-radius:12px;border:1px solid var(--glass)}
+
+    label.small{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    textarea{
+      width:100%;min-height:180px;resize:vertical;padding:12px;border-radius:10px;border:1px solid rgba(10,10,10,0.06);font-size:15px;line-height:1.5;
+    }
+
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    button{background:var(--green);border:none;color:white;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+    button.ghost{background:transparent;color:var(--green);border:1px solid rgba(0,200,83,0.14)}
+    button:active{transform:translateY(1px)}
+
+    .small-muted{font-size:13px;color:var(--muted)}
+
+    .output{
+      width:100%;min-height:120px;padding:12px;border-radius:10px;border:1px dashed rgba(0,0,0,0.06);background:#fafdfb;white-space:pre-wrap;overflow:auto;
+    }
+
+    .meta{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+
+    .footer{display:flex;align-items:center;justify-content:space-between;margin-top:14px;color:var(--muted);font-size:13px}
+
+    /* responsive */
+    @media (max-width:900px){
+      .grid{grid-template-columns:1fr;}
+      .card{padding:12px}
+    }
+
+    /* tiny helper */
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,0.03);font-size:13px}
+
+    .switch{display:inline-flex;align-items:center;gap:8px}
+    input[type=range]{width:160px}
+
+    .toast{position:fixed;right:20px;bottom:20px;background:#111;color:white;padding:10px 14px;border-radius:10px;opacity:0;transform:translateY(8px);transition:all .28s ease}
+    .toast.show{opacity:1;transform:translateY(0)}
+  </style>
+</head>
+<body>
+  <div class="container" role="application">
+    <header>
+      <div class="logo">TS</div>
+      <div>
+        <h1>Text Shortener</h1>
+        <p class="lead">Automatically shorten long text while keeping the main point—perfect for summaries, previews, and social posts.</p>
+      </div>
+    </header>
+
+    <main class="grid" style="margin-top:14px">
+      <section class="card">
+        <label class="small">Input (paste or type long text)</label>
+        <textarea id="input" placeholder="Paste your article, notes, or long post here..."></textarea>
+
+        <div class="controls">
+          <button id="shortenBtn">Shorten Text</button>
+          <button id="copyOut" class="ghost">Copy Shortened</button>
+          <button id="clearBtn" class="ghost">Clear</button>
+
+          <div style="flex:1"></div>
+
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="pill">Length: <span id="lengthLabel">30%</span></div>
+          </div>
+        </div>
+
+        <div class="meta">
+          <div class="small-muted">Auto-shorten as you type:</div>
+          <label class="switch"><input id="autoToggle" type="checkbox" checked> Enable</label>
+        </div>
+      </section>
+
+      <aside class="card">
+        <label class="small">Shortening level</label>
+        <input type="range" id="ratio" min="10" max="80" value="30">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
+          <small class="small-muted">More concise</small>
+          <small class="small-muted">More detail</small>
+        </div>
+
+        <hr style="margin:14px 0;border:none;border-top:1px solid rgba(0,0,0,0.04)"> 
+
+        <label class="small">Output (shortened text)</label>
+        <div id="output" class="output" aria-live="polite"></div>
+
+        <div class="footer">
+          <div class="small-muted"><span id="outCount">0</span> chars</div>
+          <div style="display:flex;gap:8px">
+            <button id="copyBtn">Copy</button>
+            <button id="downloadBtn" class="ghost">Download .txt</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <div id="toast" class="toast">Copied!</div>
+
+  <script>
+    // Simple client-side summarizer that selects top-scoring sentences based on word frequency.
+    // Not an AI model, but it preserves important sentences and is fast + offline.
+
+    const input = document.getElementById('input');
+    const output = document.getElementById('output');
+    const shortenBtn = document.getElementById('shortenBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const copyOut = document.getElementById('copyOut');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const ratio = document.getElementById('ratio');
+    const lengthLabel = document.getElementById('lengthLabel');
+    const autoToggle = document.getElementById('autoToggle');
+    const outCount = document.getElementById('outCount');
+    const toast = document.getElementById('toast');
+
+    const STOPWORDS = new Set(["the","is","in","at","which","on","and","a","an","of","for","to","with","that","this","it","as","by","are","was","be","from","or","has","have","but","not","they","their","its","will","can","we","our","you","your","i","he","she","them","so","if","these","those","his","her"]);
+
+    function sentenceSplit(text){
+      // split on sentence boundaries (., ?, !) while keeping abbreviations simple
+      const sent = text
+        .replace(/\n+/g,' . ')
+        .split(/(?<=[\.\?\!])\s+/g)
+        .map(s=>s.trim())
+        .filter(Boolean);
+      return sent;
+    }
+
+    function wordTokens(s){
+      return s.toLowerCase().replace(/["'“”‘’()\[\]{}:;—–\/\\<>@#=+*~`\|]/g,'')
+        .split(/[^a-z0-9\-]+/g).filter(Boolean);
+    }
+
+    function scoreSentences(sentences){
+      const freq = Object.create(null);
+      for(const s of sentences){
+        const tokens = wordTokens(s);
+        for(const t of tokens){
+          if(STOPWORDS.has(t)) continue;
+          freq[t] = (freq[t] || 0) + 1;
+        }
+      }
+      // normalize by highest freq
+      const maxf = Math.max(0, ...Object.values(freq));
+      if(maxf>0){
+        for(const k in freq) freq[k] = freq[k]/maxf;
+      }
+      const scores = sentences.map(s=>{
+        const tokens = wordTokens(s);
+        let sc = 0;
+        for(const t of tokens){ if(freq[t]) sc += freq[t]; }
+        return sc * Math.sqrt(tokens.length || 1); // slight bias to longer sentences that share keywords
+      });
+      return scores;
+    }
+
+    function shorten(text, percent){
+      if(!text || text.trim().length<10) return '';
+      // If already short enough, return original trimmed
+      const raw = text.trim();
+      const targetChars = Math.max(40, Math.round(raw.length * (percent/100)) );
+      if(raw.length <= targetChars) return raw;
+
+      const sentences = sentenceSplit(raw);
+      if(sentences.length<=1){
+        // fallback: truncate to target with ellipsis
+        return raw.slice(0, targetChars).trim() + (raw.length>targetChars ? '…' : '');
+      }
+
+      const scores = scoreSentences(sentences);
+      // pair and sort
+      const pairs = sentences.map((s,i)=>({s,i,score:scores[i]}))
+        .sort((a,b)=>b.score - a.score);
+
+      // pick top sentences until we hit target length, but keep original order
+      const chosen = [];
+      let len = 0;
+      for(const p of pairs){
+        if(len >= targetChars) break;
+        chosen.push(p);
+        len += p.s.length;
+      }
+      // if nothing chosen (edge-case), choose highest-scoring sentence
+      if(chosen.length===0) chosen.push(pairs[0]);
+
+      // restore original order
+      chosen.sort((a,b)=>a.i - b.i);
+      let out = chosen.map(c=>c.s).join(' ');
+
+      // final trim: ensure not wildly over target (allow a little extra)
+      if(out.length > targetChars + 40){
+        out = out.slice(0, targetChars).trim();
+        // cut at last space to avoid mid-word
+        const lastSpace = out.lastIndexOf(' ');
+        if(lastSpace>24) out = out.slice(0,lastSpace);
+        out = out + '…';
+      }
+      return out;
+    }
+
+    // UI glue
+    function updateShortened(){
+      const val = input.value;
+      const pct = parseInt(ratio.value,10);
+      lengthLabel.textContent = pct + '%';
+      const s = shorten(val, pct);
+      output.textContent = s || '— shortened text will appear here —';
+      outCount.textContent = s ? s.length : 0;
+    }
+
+    // debounce helper
+    function debounce(fn, wait){
+      let t; return function(...a){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,a), wait); };
+    }
+
+    const debouncedUpdate = debounce(()=>{
+      if(autoToggle.checked) updateShortened();
+    }, 600);
+
+    // events
+    input.addEventListener('input', debouncedUpdate);
+    ratio.addEventListener('input', updateShortened);
+    shortenBtn.addEventListener('click', updateShortened);
+
+    clearBtn.addEventListener('click', ()=>{
+      input.value=''; output.textContent='— shortened text will appear here —'; outCount.textContent = 0;
+    });
+
+    function showToast(msg='Copied!'){
+      toast.textContent = msg; toast.classList.add('show');
+      setTimeout(()=>toast.classList.remove('show'), 1800);
+    }
+
+    function copyText(t){
+      if(!t) return showToast('Nothing to copy');
+      navigator.clipboard?.writeText(t).then(()=>showToast('Copied!'), ()=>showToast('Copy failed'));
+    }
+
+    copyBtn.addEventListener('click', ()=>copyText(output.textContent));
+    copyOut.addEventListener('click', ()=>copyText(output.textContent));
+
+    downloadBtn.addEventListener('click', ()=>{
+      const text = output.textContent || '';
+      const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'shortened.txt'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // initialize
+    updateShortened();
+  </script>
+</body>
+</html>

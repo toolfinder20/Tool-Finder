@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BMI Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: #111;
+    }
+    .container {
+      background: #e8ffe8;
+      border: 2px solid #00cc44;
+      border-radius: 10px;
+      padding: 20px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+    h1 {
+      color: #00b33c;
+      margin-bottom: 15px;
+    }
+    .input-group {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #00cc44;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #00cc44;
+      border-radius: 5px;
+      font-size: 16px;
+      margin-bottom: 15px;
+    }
+    .result {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 15px;
+      color: #007a29;
+    }
+    @media (max-width: 480px) {
+      h1 { font-size: 22px; }
+      .result { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>BMI Calculator</h1>
+
+    <select id="unit-select">
+      <option value="metric">Metric (kg, cm)</option>
+      <option value="imperial">Imperial (lbs, ft/in)</option>
+    </select>
+
+    <div class="input-group">
+      <label for="weight">Weight</label>
+      <input type="number" id="weight" placeholder="Enter weight" />
+    </div>
+
+    <div class="input-group metric-group">
+      <label for="height-cm">Height (cm)</label>
+      <input type="number" id="height-cm" placeholder="Enter height in cm" />
+    </div>
+
+    <div class="input-group imperial-group" style="display: none;">
+      <label for="height-ft">Height (ft)</label>
+      <input type="number" id="height-ft" placeholder="Feet" />
+    </div>
+    <div class="input-group imperial-group" style="display: none;">
+      <label for="height-in">Height (in)</label>
+      <input type="number" id="height-in" placeholder="Inches" />
+    </div>
+
+    <div class="result" id="result">Enter your details</div>
+  </div>
+
+  <script>
+    const unitSelect = document.getElementById('unit-select');
+    const weightInput = document.getElementById('weight');
+    const heightCmInput = document.getElementById('height-cm');
+    const heightFtInput = document.getElementById('height-ft');
+    const heightInInput = document.getElementById('height-in');
+    const resultText = document.getElementById('result');
+
+    const metricGroup = document.querySelectorAll('.metric-group');
+    const imperialGroup = document.querySelectorAll('.imperial-group');
+
+    function updateVisibility() {
+      if (unitSelect.value === 'metric') {
+        metricGroup.forEach(el => el.style.display = 'block');
+        imperialGroup.forEach(el => el.style.display = 'none');
+      } else {
+        metricGroup.forEach(el => el.style.display = 'none');
+        imperialGroup.forEach(el => el.style.display = 'block');
+      }
+      calculateBMI();
+    }
+
+    function calculateBMI() {
+      let weight = parseFloat(weightInput.value);
+      let height;
+
+      if (unitSelect.value === 'metric') {
+        let heightCm = parseFloat(heightCmInput.value);
+        if (!weight || !heightCm) {
+          resultText.textContent = 'Enter your details';
+          return;
+        }
+        height = heightCm / 100;
+      } else {
+        let ft = parseFloat(heightFtInput.value);
+        let inch = parseFloat(heightInInput.value);
+        if (!weight || !ft || !inch) {
+          resultText.textContent = 'Enter your details';
+          return;
+        }
+        height = (ft * 12 + inch) * 0.0254;
+        weight = weight * 0.453592;
+      }
+
+      const bmi = weight / (height * height);
+      let category = '';
+
+      if (bmi < 18.5) category = 'Underweight';
+      else if (bmi < 25) category = 'Normal weight';
+      else if (bmi < 30) category = 'Overweight';
+      else category = 'Obese';
+
+      resultText.textContent = `BMI: ${bmi.toFixed(1)} (${category})`;
+    }
+
+    unitSelect.addEventListener('change', updateVisibility);
+    weightInput.addEventListener('input', calculateBMI);
+    heightCmInput.addEventListener('input', calculateBMI);
+    heightFtInput.addEventListener('input', calculateBMI);
+    heightInInput.addEventListener('input', calculateBMI);
+  </script>
+</body>
+</html>

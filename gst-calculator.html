@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GST Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: #111;
+    }
+    .container {
+      background: #e8ffe8;
+      border: 2px solid #00cc44;
+      border-radius: 10px;
+      padding: 20px;
+      width: 90%;
+      max-width: 450px;
+      text-align: center;
+    }
+    h1 {
+      color: #00b33c;
+      margin-bottom: 15px;
+    }
+    .input-group {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #00cc44;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    .result {
+      margin-top: 15px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #007a29;
+    }
+    @media (max-width: 480px) {
+      h1 { font-size: 22px; }
+      .result { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>GST Calculator</h1>
+
+    <div class="input-group">
+      <label for="amount">Amount</label>
+      <input type="number" id="amount" placeholder="Enter amount" />
+    </div>
+
+    <div class="input-group">
+      <label for="gst-rate">GST Rate</label>
+      <select id="gst-rate">
+        <option value="5">5%</option>
+        <option value="12">12%</option>
+        <option value="18" selected>18%</option>
+        <option value="28">28%</option>
+      </select>
+    </div>
+
+    <div class="input-group">
+      <label>Calculation Type</label>
+      <select id="calc-type">
+        <option value="exclusive">Add GST (Exclusive)</option>
+        <option value="inclusive">Remove GST (Inclusive)</option>
+      </select>
+    </div>
+
+    <div class="result" id="gst-amount">GST Amount: -</div>
+    <div class="result" id="total-amount">Total Amount: -</div>
+  </div>
+
+  <script>
+    const amountInput = document.getElementById('amount');
+    const gstRateInput = document.getElementById('gst-rate');
+    const calcTypeInput = document.getElementById('calc-type');
+    const gstAmountText = document.getElementById('gst-amount');
+    const totalAmountText = document.getElementById('total-amount');
+
+    function calculateGST() {
+      const amount = parseFloat(amountInput.value);
+      const rate = parseFloat(gstRateInput.value);
+
+      if (!amount) {
+        gstAmountText.textContent = 'GST Amount: -';
+        totalAmountText.textContent = 'Total Amount: -';
+        return;
+      }
+
+      if (calcTypeInput.value === 'exclusive') {
+        const gst = (amount * rate) / 100;
+        const total = amount + gst;
+        gstAmountText.textContent = `GST Amount: ₹${gst.toFixed(2)}`;
+        totalAmountText.textContent = `Total Amount (Incl. GST): ₹${total.toFixed(2)}`;
+      } else {
+        const gst = (amount * rate) / (100 + rate);
+        const base = amount - gst;
+        gstAmountText.textContent = `GST Amount: ₹${gst.toFixed(2)}`;
+        totalAmountText.textContent = `Base Amount (Excl. GST): ₹${base.toFixed(2)}`;
+      }
+    }
+
+    amountInput.addEventListener('input', calculateGST);
+    gstRateInput.addEventListener('change', calculateGST);
+    calcTypeInput.addEventListener('change', calculateGST);
+  </script>
+</body>
+</html>

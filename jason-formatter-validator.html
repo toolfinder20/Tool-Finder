@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSON Formatter & Validator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2fff5;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: #ffffff;
+      border: 2px solid #28a745;
+      border-radius: 10px;
+      max-width: 700px;
+      width: 90%;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+    }
+
+    h2 {
+      text-align: center;
+      color: #28a745;
+      margin-bottom: 15px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 150px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #28a745;
+      outline: none;
+      font-size: 14px;
+      margin-bottom: 10px;
+      resize: vertical;
+      font-family: Consolas, monospace;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      flex: 1;
+      padding: 10px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #1e7e34;
+    }
+
+    #message {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .success {
+      color: #1e7e34;
+    }
+
+    .error {
+      color: red;
+    }
+
+    @media (max-width: 480px) {
+      button {
+        font-size: 13px;
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>JSON Formatter & Validator</h2>
+
+    <textarea id="inputJson" placeholder="Paste or write JSON here..."></textarea>
+
+    <div class="btn-group">
+      <button id="formatBtn">Format</button>
+      <button id="validateBtn">Validate</button>
+      <button id="clearBtn">Clear</button>
+      <button id="copyBtn">Copy Output</button>
+    </div>
+
+    <div id="message"></div>
+
+    <textarea id="outputJson" placeholder="Output will appear here..." readonly></textarea>
+  </div>
+
+  <script>
+    const inputJson = document.getElementById("inputJson");
+    const outputJson = document.getElementById("outputJson");
+    const message = document.getElementById("message");
+
+    function validateJSON(text) {
+      try {
+        const parsed = JSON.parse(text);
+        return { valid: true, parsed };
+      } catch (error) {
+        return { valid: false, error: error.message };
+      }
+    }
+
+    document.getElementById("formatBtn").addEventListener("click", () => {
+      const input = inputJson.value.trim();
+      const result = validateJSON(input);
+
+      if (result.valid) {
+        outputJson.value = JSON.stringify(result.parsed, null, 2);
+        message.textContent = "JSON formatted successfully.";
+        message.className = "success";
+      } else {
+        message.textContent = "Invalid JSON: " + result.error;
+        message.className = "error";
+      }
+    });
+
+    document.getElementById("validateBtn").addEventListener("click", () => {
+      const input = inputJson.value.trim();
+      const result = validateJSON(input);
+
+      if (result.valid) {
+        message.textContent = "Valid JSON.";
+        message.className = "success";
+      } else {
+        message.textContent = "Invalid JSON: " + result.error;
+        message.className = "error";
+      }
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      inputJson.value = "";
+      outputJson.value = "";
+      message.textContent = "";
+    });
+
+    document.getElementById("copyBtn").addEventListener("click", () => {
+      outputJson.select();
+      document.execCommand("copy");
+      alert("Output copied to clipboard!");
+    });
+  </script>
+</body>
+</html>

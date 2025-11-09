@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>URL Encoder / Decoder — Bright Green Tool</title>
+  <style>
+    :root{
+      --brand:#00c853; /* bright green */
+      --brand-dark:#00a144;
+      --bg:#ffffff;
+      --muted:#6b6b6b;
+      --radius:12px;
+      --gap:14px;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:linear-gradient(180deg, #f8fff9 0%, #ffffff 100%);
+      color:#0b0b0b;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+    }
+
+    .card{
+      width:100%;
+      max-width:920px;
+      background:var(--bg);
+      border-radius:18px;
+      box-shadow:0 6px 30px rgba(0,0,0,0.06);
+      padding:24px;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:18px;
+    }
+
+    header{grid-column:1/-1;display:flex;align-items:center;gap:12px}
+    header h1{margin:0;font-size:18px}
+    header p{margin:0;color:var(--muted);font-size:13px}
+
+    .panel{
+      padding:14px;
+      border-radius:12px;
+      background:linear-gradient(180deg, rgba(0,200,83,0.04), rgba(0,200,83,0.02));
+      min-height:220px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    label.small{font-size:13px;color:var(--muted)}
+
+    textarea{
+      width:100%;
+      min-height:110px;
+      resize:vertical;
+      border-radius:10px;
+      border:1px solid rgba(6,10,10,0.06);
+      padding:12px 12px;
+      font-size:14px;
+      background:transparent;
+      outline:none;
+    }
+
+    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .btn{
+      border:0;
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:600;
+      cursor:pointer;
+      background:var(--brand);
+      color:white;
+      box-shadow:0 6px 18px rgba(0,200,83,0.12);
+    }
+    .btn.ghost{
+      background:transparent;color:var(--brand);border:1px solid rgba(0,200,83,0.12);box-shadow:none;font-weight:600
+    }
+    .btn.warn{background:#ff6b6b;box-shadow:0 6px 18px rgba(255,107,107,0.12)}
+
+    .mode-toggle{display:inline-flex;border-radius:12px;padding:4px;background:rgba(0,0,0,0.03);gap:6px}
+    .mode-toggle button{border-radius:8px;padding:8px 12px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+    .mode-toggle button.active{background:var(--brand);color:white}
+
+    .meta{display:flex;align-items:center;gap:10px;justify-content:space-between}
+
+    .footer{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding-top:6px}
+    .hint{color:var(--muted);font-size:13px}
+
+    /* mobile */
+    @media (max-width:820px){
+      .card{grid-template-columns:1fr;max-width:720px;padding:18px}
+      header h1{font-size:16px}
+    }
+
+    /* accessible focus */
+    button:focus, textarea:focus{outline:3px solid rgba(0,200,83,0.14)}
+
+    .status{font-size:13px;color:var(--muted)}
+    .error{color:#d32f2f;font-weight:600}
+
+  </style>
+</head>
+<body>
+  <div class="card" role="application" aria-label="URL Encoder Decoder tool">
+    <header>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <h1>URL Encoder / Decoder</h1>
+        <p>Enter text on the left, get a URL-safe encoding or decoded text on the right. Real-time processing enabled.</p>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <div class="mode-toggle" role="tablist" aria-label="Mode selector">
+          <button id="mode-encode" class="active" role="tab" aria-selected="true">Encode</button>
+          <button id="mode-decode" role="tab" aria-selected="false">Decode</button>
+        </div>
+        <button class="btn ghost" id="clear-all">Clear</button>
+      </div>
+    </header>
+
+    <section class="panel" aria-labelledby="input-label">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <label id="input-label" class="small">Input</label>
+        <div class="status" id="input-status">Ready</div>
+      </div>
+      <textarea id="input" placeholder="Paste or type text here — supports full text and URLs"></textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div class="controls">
+          <button class="btn" id="encode-btn">Encode</button>
+          <button class="btn ghost" id="decode-btn">Decode</button>
+          <button class="btn ghost" id="copy-input">Copy Input</button>
+        </div>
+        <div style="font-size:13px;color:var(--muted)">
+          <label style="display:inline-flex;align-items:center;gap:8px"><input type="checkbox" id="auto" checked/> Auto</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="output-label">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <label id="output-label" class="small">Output</label>
+        <div class="status" id="output-status">No errors</div>
+      </div>
+      <textarea id="output" readonly placeholder="Encoded or decoded output will appear here"></textarea>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div class="controls">
+          <button class="btn" id="copy-output">Copy Output</button>
+          <button class="btn ghost" id="select-output">Select</button>
+        </div>
+        <div style="text-align:right">
+          <div class="hint">Uses <code>encodeURIComponent</code> / <code>decodeURIComponent</code>.</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">
+      <div class="hint">Tip: Use the <strong>Mode</strong> selector or the action buttons. Invalid percent-encodings will show an error on decode.</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div id="feedback" class="status">&nbsp;</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const encodeBtn = document.getElementById('encode-btn');
+    const decodeBtn = document.getElementById('decode-btn');
+    const copyOut = document.getElementById('copy-output');
+    const copyIn = document.getElementById('copy-input');
+    const clearAll = document.getElementById('clear-all');
+    const modeEncode = document.getElementById('mode-encode');
+    const modeDecode = document.getElementById('mode-decode');
+    const autoCheckbox = document.getElementById('auto');
+    const outputStatus = document.getElementById('output-status');
+    const inputStatus = document.getElementById('input-status');
+    const feedback = document.getElementById('feedback');
+    const selectOutput = document.getElementById('select-output');
+
+    let mode = 'encode';
+
+    function setMode(m){
+      mode = m;
+      if(m==='encode'){
+        modeEncode.classList.add('active');
+        modeDecode.classList.remove('active');
+        modeEncode.setAttribute('aria-selected','true');
+        modeDecode.setAttribute('aria-selected','false');
+      } else {
+        modeDecode.classList.add('active');
+        modeEncode.classList.remove('active');
+        modeDecode.setAttribute('aria-selected','true');
+        modeEncode.setAttribute('aria-selected','false');
+      }
+      process();
+    }
+
+    modeEncode.addEventListener('click',()=>setMode('encode'));
+    modeDecode.addEventListener('click',()=>setMode('decode'));
+
+    function safeEncode(text){
+      try{
+        return encodeURIComponent(text);
+      }catch(e){
+        return null;
+      }
+    }
+
+    function safeDecode(text){
+      try{
+        // Replace plus with space first (handle common form-encoded strings)
+        const normalized = text.replace(/\+/g, ' ');
+        return decodeURIComponent(normalized);
+      }catch(e){
+        return null;
+      }
+    }
+
+    function process(){
+      const value = inputEl.value;
+      inputStatus.textContent = value.length ? value.length + ' chars' : 'Ready';
+      if(!value){ outputEl.value=''; outputStatus.textContent='No output'; return }
+      if(mode==='encode'){
+        const r = safeEncode(value);
+        if(r===null){ outputEl.value=''; outputStatus.innerHTML = '<span class="error">Encoding error</span>'; }
+        else { outputEl.value = r; outputStatus.textContent = 'OK'; }
+      } else {
+        const r = safeDecode(value);
+        if(r===null){ outputEl.value=''; outputStatus.innerHTML = '<span class="error">Invalid percent-encoding</span>'; }
+        else { outputEl.value = r; outputStatus.textContent = 'OK'; }
+      }
+    }
+
+    // Auto processing
+    inputEl.addEventListener('input',()=>{
+      if(autoCheckbox.checked){ process(); }
+    });
+
+    encodeBtn.addEventListener('click',()=>{ setMode('encode'); process(); showFeedback('Encoded'); });
+    decodeBtn.addEventListener('click',()=>{ setMode('decode'); process(); showFeedback('Decoded'); });
+
+    copyOut.addEventListener('click',async ()=>{
+      try{
+        await navigator.clipboard.writeText(outputEl.value);
+        showFeedback('Output copied');
+      }catch(e){ showFeedback('Copy failed',true) }
+    });
+
+    copyIn.addEventListener('click',async ()=>{
+      try{
+        await navigator.clipboard.writeText(inputEl.value);
+        showFeedback('Input copied');
+      }catch(e){ showFeedback('Copy failed',true) }
+    });
+
+    clearAll.addEventListener('click',()=>{
+      inputEl.value='';outputEl.value='';inputStatus.textContent='Ready';outputStatus.textContent='No output';showFeedback('Cleared');
+    });
+
+    selectOutput.addEventListener('click',()=>{ outputEl.select(); outputEl.focus(); showFeedback('Selected output'); });
+
+    function showFeedback(msg, isError=false){
+      feedback.textContent = msg;
+      feedback.style.color = isError ? '#d32f2f' : 'var(--brand-dark)';
+      setTimeout(()=>{ feedback.textContent=''; },1600);
+    }
+
+    // keyboard shortcuts: Ctrl+E encode, Ctrl+D decode, Ctrl+K clear
+    document.addEventListener('keydown',(e)=>{
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='e'){ e.preventDefault(); encodeBtn.click(); }
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='d'){ e.preventDefault(); decodeBtn.click(); }
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); clearAll.click(); }
+    });
+
+    // seed example
+    inputEl.value = 'https://example.com/search?q=hello world&lang=en';
+    process();
+
+  </script>
+</body>
+</html>

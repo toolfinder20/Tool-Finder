@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Regex Tester</title>
+<style>
+:root{
+  --brand:#00c853;
+  --brand-dark:#009743;
+  --bg:#ffffff;
+  --muted:#6b6b6b;
+  font-family:Inter, ui-sans-serif, system-ui;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:24px;
+  background:#ffffff;
+  color:#0b0b0b;
+  display:flex; justify-content:center;
+}
+.card{
+  width:100%; max-width:920px;
+  background:var(--bg);
+  border-radius:18px;
+  box-shadow:0 6px 30px rgba(0,0,0,0.06);
+  padding:22px;
+  display:flex; flex-direction:column; gap:20px;
+}
+h1{margin:0;font-size:20px}
+p{margin:0;color:var(--muted);font-size:14px}
+label{font-size:13px;color:var(--muted)}
+textarea{
+  width:100%; min-height:120px;
+  border-radius:10px;
+  border:1px solid rgba(0,0,0,0.12);
+  padding:10px 12px;
+  font-size:14px;
+  resize:vertical;
+}
+.input-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input[type="text"]{
+  flex:1;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid rgba(0,0,0,0.12);
+  font-size:14px;
+}
+.btn{
+  padding:8px 14px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+  font-size:14px;
+  background:var(--brand);
+  color:white;
+}
+.btn.ghost{
+  background:transparent;
+  color:var(--brand);
+  border:1px solid rgba(0,200,83,0.25);
+}
+.preview{
+  white-space:pre-wrap;
+  background:linear-gradient(180deg, rgba(0,200,83,0.04), rgba(0,200,83,0.02));
+  padding:16px;
+  border-radius:12px;
+  border:1px solid rgba(0,0,0,0.06);
+  min-height:120px;
+  font-family:monospace;
+  overflow-wrap:break-word;
+}
+mark{
+  background:rgba(0,200,83,0.4);
+  padding:0 2px;
+  border-radius:3px;
+}
+.status{font-size:13px;color:var(--brand-dark);min-height:18px;}
+@media(max-width:600px){ .input-row{flex-direction:column;align-items:stretch} }
+</style>
+</head>
+<body>
+<div class="card">
+  <div>
+    <h1>Regex Tester</h1>
+    <p>Test regex expressions in real time and view matches.</p>
+  </div>
+
+  <label>Regular Expression</label>
+  <div class="input-row">
+    <input type="text" id="pattern" placeholder="e.g. (hello)+" />
+    <input type="text" id="flags" placeholder="flags (e.g. g i m)" style="max-width:90px" />
+  </div>
+
+  <label>Test Text</label>
+  <textarea id="testText" placeholder="Enter text to match against..."></textarea>
+
+  <div class="input-row">
+    <button class="btn" id="testBtn">Test</button>
+    <button class="btn ghost" id="clearBtn">Clear</button>
+    <button class="btn ghost" id="copyBtn">Copy Output</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <label>Matched Output</label>
+  <div class="preview" id="output"></div>
+</div>
+
+<script>
+const patternInput = document.getElementById('pattern');
+const flagsInput = document.getElementById('flags');
+const testText = document.getElementById('testText');
+const output = document.getElementById('output');
+const status = document.getElementById('status');
+
+function setStatus(msg, error=false){
+  status.textContent = msg;
+  status.style.color = error? '#d32f2f' : 'var(--brand-dark)';
+}
+
+function highlightMatches(text, regex){
+  return text.replace(regex, m => `<mark>${m}</mark>`);
+}
+
+function runTest(){
+  const pattern = patternInput.value;
+  const flags = flagsInput.value;
+  const text = testText.value;
+
+  if(!pattern){ setStatus('Enter a pattern.', true); return; }
+
+  let regex;
+  try{ regex = new RegExp(pattern, flags); }
+  catch(e){ setStatus('Invalid regex: ' + e.message, true); return; }
+
+  setStatus('OK');
+  const result = highlightMatches(text, regex);
+  output.innerHTML = result || '(no matches)';
+}
+
+document.getElementById('testBtn').onclick = runTest;
+patternInput.addEventListener('input', runTest);
+testText.addEventListener('input', runTest);
+flagsInput.addEventListener('input', runTest);
+
+document.getElementById('clearBtn').onclick = ()=>{
+  patternInput.value=''; flagsInput.value=''; testText.value=''; output.textContent=''; setStatus('Cleared');
+};
+
+document.getElementById('copyBtn').onclick = async ()=>{
+  await navigator.clipboard.writeText(output.textContent);
+  setStatus('Copied');
+};
+</script>
+</body>
+</html>

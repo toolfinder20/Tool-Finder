@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Color Picker & Converter</title>
+  <style>
+    :root{
+      --brand:#00c853;
+      --brand-dark:#009743;
+      --bg:#ffffff;
+      --muted:#6b6b6b;
+      font-family:Inter, ui-sans-serif, system-ui;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; padding:24px;
+      background:#ffffff;
+      color:#0b0b0b;
+      display:flex; justify-content:center; align-items:flex-start;
+    }
+    .card{
+      width:100%; max-width:720px;
+      background:var(--bg);
+      border-radius:18px;
+      box-shadow:0 6px 30px rgba(0,0,0,0.06);
+      padding:22px;
+      display:flex; flex-direction:column; gap:20px;
+    }
+    h1{margin:0;font-size:20px;}
+    p{margin:0;color:var(--muted);font-size:14px;}
+    .row{display:flex;gap:16px;flex-wrap:wrap;}
+    .color-preview{
+      width:100%; height:120px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.1);
+    }
+    .picker-wrap{
+      display:flex; gap:12px; align-items:center;
+    }
+    input[type="color"]{
+      width:48px; height:48px; border:none; padding:0;
+      background:transparent; cursor:pointer;
+    }
+    .field{
+      display:flex; flex-direction:column; gap:6px;
+      flex:1;
+    }
+    .field label{font-size:13px;color:var(--muted);}
+    .input-row{
+      display:flex; gap:8px; align-items:center;
+    }
+    input[type="text"]{
+      flex:1; padding:10px 12px; border-radius:10px;
+      border:1px solid rgba(0,0,0,0.12);
+      font-size:14px;
+    }
+    .btn{
+      padding:8px 12px; border-radius:8px;
+      border:none; cursor:pointer; font-size:13px;
+      background:var(--brand); color:white;
+    }
+    .status{font-size:13px;color:var(--brand-dark);min-height:16px;}
+    @media(max-width:600px){ .input-row{flex-direction:column;align-items:stretch;} }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div>
+    <h1>Color Picker & Converter</h1>
+    <p>Select or input a color to convert between HEX, RGB, and HSL.</p>
+  </div>
+
+  <div class="color-preview" id="preview"></div>
+
+  <div class="picker-wrap">
+    <input type="color" id="picker" />
+  </div>
+
+  <div class="field">
+    <label>HEX</label>
+    <div class="input-row">
+      <input type="text" id="hex" placeholder="#00c853" />
+      <button class="btn" id="copy-hex">Copy</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>RGB</label>
+    <div class="input-row">
+      <input type="text" id="rgb" placeholder="rgb(0,200,83)" />
+      <button class="btn" id="copy-rgb">Copy</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>HSL</label>
+    <div class="input-row">
+      <input type="text" id="hsl" placeholder="hsl(142, 100%, 39%)" />
+      <button class="btn" id="copy-hsl">Copy</button>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+  const picker = document.getElementById('picker');
+  const hexInput = document.getElementById('hex');
+  const rgbInput = document.getElementById('rgb');
+  const hslInput = document.getElementById('hsl');
+  const preview = document.getElementById('preview');
+  const status = document.getElementById('status');
+
+  function setStatus(msg){ status.textContent = msg; setTimeout(()=>status.textContent='',1500); }
+
+  function hexToRgb(hex){
+    hex = hex.replace('#','');
+    if(hex.length===3) hex = hex.split('').map(x=>x+x).join('');
+    const num = parseInt(hex,16);
+    return { r:(num>>16)&255, g:(num>>8)&255, b:num&255 };
+  }
+
+  function rgbToHex(r,g,b){
+    return '#' + [r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+  }
+
+  function rgbToHsl(r,g,b){
+    r/=255; g/=255; b/=255;
+    const max=Math.max(r,g,b), min=Math.min(r,g,b);
+    let h,s,l=(max+min)/2;
+    if(max===min){ h=s=0; }
+    else{
+      const d=max-min;
+      s=l>0.5? d/(2-max-min) : d/(max+min);
+      switch(max){
+        case r: h=(g-b)/d+(g<b?6:0); break;
+        case g: h=(b-r)/d+2; break;
+        case b: h=(r-g)/d+4; break;
+      }
+      h/=6;
+    }
+    return { h:Math.round(h*360), s:Math.round(s*100), l:Math.round(l*100) };
+  }
+
+  function hslToRgb(h,s,l){
+    h/=360; s/=100; l/=100;
+    let r,g,b;
+    if(s===0){ r=g=b=l; }
+    else{
+      const hue2rgb=(p,q,t)=>{
+        if(t<0) t+=1;
+        if(t>1) t-=1;
+        if(t<1/6) return p+(q-p)*6*t;
+        if(t<1/2) return q;
+        if(t<2/3) return p+(q-p)*(2/3-t)*6;
+        return p;
+      };
+      const q=l<0.5? l*(1+s): l+s-l*s;
+      const p=2*l-q;
+      r=hue2rgb(p,q,h+1/3);
+      g=hue2rgb(p,q,h);
+      b=hue2rgb(p,q,h-1/3);
+    }
+    return { r:Math.round(r*255), g:Math.round(g*255), b:Math.round(b*255) };
+  }
+
+  function updateFromHex(){
+    let hex = hexInput.value.trim();
+    if(!/^#?[0-9A-Fa-f]{3,6}$/.test(hex)) return;
+    if(!hex.startsWith('#')) hex = '#'+hex;
+    const {r,g,b} = hexToRgb(hex);
+    const {h,s,l} = rgbToHsl(r,g,b);
+    picker.value = hex;
+    rgbInput.value = `rgb(${r}, ${g}, ${b})`;
+    hslInput.value = `hsl(${h}, ${s}%, ${l}%)`;
+    preview.style.background = hex;
+  }
+
+  function parseRgb(str){
+    const m = str.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+    if(!m) return null;
+    return { r:+m[1], g:+m[2], b:+m[3] };
+  }
+
+  function parseHsl(str){
+    const m = str.match(/^hsl\((\d+),\s*(\d+)%?,\s*(\d+)%?\)$/);
+    if(!m) return null;
+    return { h:+m[1], s:+m[2], l:+m[3] };
+  }
+
+  function updateFromRgb(){
+    const obj = parseRgb(rgbInput.value.trim());
+    if(!obj) return;
+    const {r,g,b} = obj;
+    const hex = rgbToHex(r,g,b);
+    const {h,s,l} = rgbToHsl(r,g,b);
+    hexInput.value = hex;
+    picker.value = hex;
+    hslInput.value = `hsl(${h}, ${s}%, ${l}%)`;
+    preview.style.background = hex;
+  }
+
+  function updateFromHsl(){
+    const obj = parseHsl(hslInput.value.trim());
+    if(!obj) return;
+    const {h,s,l} = obj;
+    const {r,g,b} = hslToRgb(h,s,l);
+    const hex = rgbToHex(r,g,b);
+    hexInput.value = hex;
+    picker.value = hex;
+    rgbInput.value = `rgb(${r}, ${g}, ${b})`;
+    preview.style.background = hex;
+  }
+
+  picker.addEventListener('input',()=>{
+    hexInput.value = picker.value;
+    updateFromHex();
+  });
+  hexInput.addEventListener('input',updateFromHex);
+  rgbInput.addEventListener('input',updateFromRgb);
+  hslInput.addEventListener('input',updateFromHsl);
+
+  function copy(id){ navigator.clipboard.writeText(document.getElementById(id).value); setStatus('Copied'); }
+  document.getElementById('copy-hex').onclick=()=>copy('hex');
+  document.getElementById('copy-rgb').onclick=()=>copy('rgb');
+  document.getElementById('copy-hsl').onclick=()=>copy('hsl');
+
+  // Initialize
+  hexInput.value = '#00c853';
+  updateFromHex();
+</script>
+</body>
+</html>
